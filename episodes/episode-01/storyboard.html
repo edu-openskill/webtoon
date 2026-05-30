@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Episode 01 — 보따리 · 스토리보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg-soft: #14141f;
+  --surface: #1c1c2a;
+  --surface-2: #232336;
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.15);
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --dim: #64748b;
+  --amber: #fbbf24;
+  --indigo: #818cf8;
+  --rose: #f43f5e;
+  --emerald: #34d399;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: 'Pretendard Variable', Pretendard, sans-serif; line-height: 1.5; }
+.container { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+/* Header */
+.ep-header { text-align: center; padding: 80px 20px 60px; border-bottom: 1px solid var(--border); margin-bottom: 60px; }
+.ep-badge { display: inline-block; padding: 6px 16px; background: rgba(251,191,36,0.12); color: var(--amber); border-radius: 999px; font-size: 13px; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 20px; }
+.ep-title { font-size: 48px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 12px; }
+.ep-subtitle { color: var(--muted); font-size: 16px; }
+.ep-stats { display: flex; justify-content: center; gap: 24px; margin-top: 24px; font-size: 13px; color: var(--dim); }
+.ep-stats span { padding: 6px 14px; background: var(--surface); border-radius: 999px; border: 1px solid var(--border); }
+.controls { display: flex; justify-content: center; gap: 12px; margin-top: 24px; }
+.btn { padding: 10px 18px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.btn:hover { background: var(--surface); border-color: var(--border-strong); }
+.btn.primary { background: var(--amber); color: var(--bg); border-color: var(--amber); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.1); }
+
+/* Page section */
+.page { margin-bottom: 80px; }
+.page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.page-num { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--amber); font-weight: 500; letter-spacing: 0.1em; }
+.page-desc { font-size: 14px; color: var(--muted); }
+
+/* Panel */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; transition: all 0.3s; }
+.panel:hover { border-color: var(--border-strong); }
+.panel.signature { border: 2px solid rgba(251,191,36,0.4); box-shadow: 0 0 24px rgba(251,191,36,0.1); }
+.panel.silent { background: linear-gradient(180deg, var(--surface), var(--bg-soft)); }
+.panel.full-bleed .panel-canvas { min-height: 540px; }
+
+/* Canvas (image area) */
+.panel-canvas {
+  position: relative;
+  min-height: 320px;
+  background: linear-gradient(135deg, var(--surface-2), var(--surface));
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.panel-canvas.has-image { padding: 0; min-height: auto; }
+.panel-canvas img { width: 100%; display: block; }
+.panel-canvas.drag-over { background: rgba(129,140,248,0.15); border: 2px dashed var(--indigo); }
+.placeholder { text-align: center; color: var(--dim); padding: 30px; }
+.placeholder-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 8px; }
+.placeholder-id .sig { color: var(--amber); font-weight: 600; }
+.placeholder-desc { font-size: 14px; color: var(--text); margin-bottom: 6px; font-weight: 500; }
+.placeholder-hint { font-size: 11px; color: var(--dim); margin-top: 12px; }
+
+/* Dialogue bubble overlays */
+.bubble {
+  position: absolute;
+  background: rgba(255,255,255,0.96);
+  color: #111;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 60%;
+  z-index: 2;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.bubble.large { padding: 18px 24px; font-size: 18px; max-width: 75%; font-weight: 700; }
+.bubble.narration { background: rgba(20,20,31,0.92); color: var(--text); border: 1px solid var(--border); font-style: italic; font-weight: 400; }
+.bubble.thought { background: rgba(20,20,31,0.85); color: var(--muted); border: 1px dashed var(--border); font-weight: 400; }
+.bubble.screen { background: #0a0a0a; color: var(--emerald); font-family: 'JetBrains Mono', monospace; font-size: 11px; border: 1px solid var(--emerald); }
+.bubble.sfx { background: transparent; color: var(--amber); font-family: 'Caveat', cursive; font-size: 24px; font-weight: 700; font-style: italic; box-shadow: none; padding: 4px 10px; }
+.bubble.top-left { top: 14px; left: 14px; }
+.bubble.top-right { top: 14px; right: 14px; }
+.bubble.bottom-left { bottom: 14px; left: 14px; }
+.bubble.bottom-right { bottom: 14px; right: 14px; }
+.bubble.center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.bubble.center-top { top: 30px; left: 50%; transform: translateX(-50%); }
+.bubble .speaker { display: block; font-size: 10px; color: var(--rose); font-weight: 700; margin-bottom: 4px; letter-spacing: 0.05em; }
+
+.silence-marker {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  color: var(--dim); font-size: 13px; font-style: italic; letter-spacing: 0.1em;
+  border: 1px dashed var(--border); padding: 10px 18px; border-radius: 999px;
+}
+
+/* Panel info bar */
+.panel-info { padding: 12px 16px; background: var(--bg-soft); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.panel-meta { font-size: 11px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.panel-meta .tag { padding: 2px 8px; background: var(--surface); border-radius: 4px; }
+.panel-meta .tag.size-full { background: rgba(251,191,36,0.15); color: var(--amber); }
+.panel-meta .tag.silent { background: rgba(100,116,139,0.2); color: var(--dim); }
+.panel-actions { display: flex; gap: 6px; }
+.icon-btn { padding: 4px 10px; font-size: 11px; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-family: inherit; }
+.icon-btn:hover { color: var(--text); border-color: var(--border-strong); }
+
+/* Prompt detail */
+.prompt-detail { display: none; padding: 16px; background: #050508; border-top: 1px solid var(--border); }
+.prompt-detail.open { display: block; }
+.prompt-detail pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #8ab4f8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #000;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.prompt-detail .negative { color: #fca5a5; }
+.prompt-detail .copy-result { font-size: 11px; color: var(--emerald); margin-left: 8px; }
+
+/* Hidden file input */
+.hidden-file { display: none; }
+
+/* Scene divider */
+.scene-divider { text-align: center; margin: 32px 0; color: var(--dim); font-size: 12px; letter-spacing: 0.1em; }
+.scene-divider::before, .scene-divider::after { content: ''; display: inline-block; width: 40px; height: 1px; background: var(--border); vertical-align: middle; margin: 0 12px; }
+
+/* Footer */
+.ep-footer { text-align: center; padding: 60px 20px 80px; border-top: 1px solid var(--border); margin-top: 60px; color: var(--muted); font-size: 14px; }
+.next-hook { background: linear-gradient(135deg, rgba(244,63,94,0.1), rgba(129,140,248,0.05)); padding: 24px; border-radius: 16px; margin: 30px 0; border: 1px solid rgba(244,63,94,0.2); }
+.next-hook .label { font-size: 12px; color: var(--rose); letter-spacing: 0.1em; margin-bottom: 8px; font-weight: 600; }
+.next-hook p { color: var(--text); font-size: 16px; line-height: 1.6; }
+
+/* Mobile */
+@media (max-width: 600px) {
+  .ep-title { font-size: 36px; }
+  .bubble { font-size: 11px; padding: 8px 10px; }
+  .bubble.large { font-size: 14px; padding: 12px 16px; }
+  .panel-canvas { min-height: 260px; }
+  .panel.full-bleed .panel-canvas { min-height: 420px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<div class="ep-header">
+  <div class="ep-badge">Part 1 · Episode 01</div>
+  <h1 class="ep-title">보따리</h1>
+  <p class="ep-subtitle">한재민이 임원 회의에서 바이브 코딩을 시연한 날</p>
+  <div class="ep-stats">
+    <span>22 페이지</span>
+    <span>67 패널</span>
+    <span>침묵 13</span>
+    <span>풀-블리드 3</span>
+  </div>
+  <div class="controls">
+    <button class="btn primary" onclick="exportImages()">전체 이미지 내보내기</button>
+    <button class="btn" onclick="clearAll()">모두 초기화</button>
+    <button class="btn" onclick="copyAllPrompts()">전체 프롬프트 복사</button>
+  </div>
+  <p style="font-size: 12px; color: var(--dim); margin-top: 16px;">💡 패널을 클릭해서 이미지 업로드 · 드래그-드롭도 가능 · localStorage에 자동 저장</p>
+</div>
+
+<!-- ============ PAGE 1 — 강민호 출근 ============ -->
+<div class="page">
+  <div class="page-header">
+    <span class="page-num">PAGE 01</span>
+    <span class="page-desc">강민호의 출근 (카페)</span>
+  </div>
+
+  <div class="panel" data-id="1.1">
+    <div class="panel-canvas" data-aspect="wide">
+      <div class="placeholder"><div class="placeholder-id">1.1</div><div class="placeholder-desc">[Wide] 카페 창가, 강민호 노트북 앞</div><div class="placeholder-hint">클릭 / 드래그-드롭으로 이미지 업로드</div></div>
+      <div class="bubble narration top-left">"회사 근처 카페. 오전 9시."</div>
+    </div>
+    <div class="panel-info">
+      <div class="panel-meta"><span class="tag">Wide</span><span class="tag">아침 / 카페</span></div>
+      <div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div>
+    </div>
+    <div class="prompt-detail">
+      <pre>Korean webtoon style, cell-shaded, vivid color, soft lineart, Korean man late-30s with short black hair slight gray streaks at temples, faint thin mustache, plain black crew-neck tee with dark indigo raw denim jeans, sitting at small wooden cafe table near window, laptop open showing email interface, mug of black coffee beside, morning soft warm light from window, urban cafe interior background blurred, medium close-up slight side angle, calm contemplative expression
+<span class="negative">--negative: extra fingers, deformed face, asymmetric eyes, blurry, watermark, text overlay</span></pre>
+      <button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span>
+    </div>
+  </div>
+
+  <div class="panel" data-id="1.2">
+    <div class="panel-canvas" data-aspect="close-up">
+      <div class="placeholder"><div class="placeholder-id">1.2</div><div class="placeholder-desc">[Close-up] 노트북 화면 — 사내공지</div></div>
+      <div class="bubble screen center"><span class="speaker">화면 텍스트</span>[사내공지] 오늘 10시 임원 회의 — AI 도구 시연 / 한재민</div>
+    </div>
+    <div class="panel-info">
+      <div class="panel-meta"><span class="tag">Close-up</span><span class="tag">UI 컷</span></div>
+      <div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div>
+    </div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up on laptop screen showing email notification with Korean text, soft window light reflection, shallow focus, clean modern UI</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="1.3">
+    <div class="panel-canvas" data-aspect="medium">
+      <div class="placeholder"><div class="placeholder-id">1.3</div><div class="placeholder-desc">[Medium] 강민호 옅은 미소</div></div>
+      <div class="bubble bottom-right"><span class="speaker">강민호</span>"...드디어 시작이네."</div>
+    </div>
+    <div class="panel-info">
+      <div class="panel-meta"><span class="tag">Medium</span></div>
+      <div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div>
+    </div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s short black hair slight gray streaks, faint thin mustache, plain black crew-neck tee, medium close-up profile view, faint quiet smile at corner of mouth, gaze on laptop then drifting to window, morning warm light on his face, calm contemplative</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 2 — 회의실 입장 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 02</span><span class="page-desc">로비 → 회의실 도착</span></div>
+
+  <div class="panel silent" data-id="2.1">
+    <div class="panel-canvas" data-aspect="wide">
+      <div class="placeholder"><div class="placeholder-id">2.1</div><div class="placeholder-desc">[Wide silent] 회사 로비, 강민호 뒷모습</div></div>
+      <div class="silence-marker">침묵 · 의도된 여백</div>
+    </div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span><span class="tag">Wide</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s back view walking through modern minimalist office lobby, laptop bag over shoulder, large glass windows showing city skyline, cool morning light, wide full-body shot, vertical composition</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="2.2">
+    <div class="panel-canvas" data-aspect="medium">
+      <div class="placeholder"><div class="placeholder-id">2.2</div><div class="placeholder-desc">[Medium] 회의실 외부 복도, 시계 9:55</div></div>
+      <div class="bubble narration top-right">회의실 A · 09:55</div>
+    </div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span><span class="tag">자막</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, modern office corridor with "Meeting Room A" sign on door, wall clock showing 9:55, soft cool fluorescent light, no people, slight perspective shot</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="2.3">
+    <div class="panel-canvas" data-aspect="wide">
+      <div class="placeholder"><div class="placeholder-id">2.3</div><div class="placeholder-desc">[Wide] 회의실 4인 — 최태규·윤소율·박지호·한재민</div></div>
+      <div class="bubble top-right"><span class="speaker">한재민</span>"어, 다 오셨네!<br>잠깐만요, 세팅 마지막."</div>
+    </div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Wide</span><span class="tag">4인 등장</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, meeting room interior, Korean man early-50s balding side hair holding coffee mug seated at head, Korean woman 30 with shoulder-length wavy light-brown hair clear-frame glasses oversized cream knit sweater with iPad mid-table, Korean man late-20s with messy hair round glasses oversized black hoodie seated nervously at far end, Korean man mid-30s side-parted black hair light gray shirt standing at projector setting up laptop, morning meeting atmosphere, soft cool lighting, wide shot</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 3 — 4인 클로즈업 + 강민호 입장 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 03</span><span class="page-desc">4인 소개 + 강민호 입장</span></div>
+
+  <div class="panel" data-id="3.1">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">3.1</div><div class="placeholder-desc">[Close-up] 최태규 — 커피 한 손에</div></div><div class="bubble top-left"><span class="speaker">최태규</span>"음... 오늘 뭐 보여준다고?"</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man early-50s balding crown with short trimmed side hair, no glasses, slightly round build, white dress shirt top button open no tie, gray dress slacks, holding ceramic coffee mug, close-up portrait looking toward projector with neutral business interest, side window light, tired but sharp eyes</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="3.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">3.2</div><div class="placeholder-desc">[Close-up] 윤소율 — 아이패드 들고</div></div><div class="bubble top-right"><span class="speaker">윤소율</span>"저는 디자인 시안 가져왔어요!"</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean woman age 30 shoulder-length wavy light-brown hair, large round clear-frame glasses, oversized cream knit sweater, small silver hoop earrings, close-up holding iPad slightly raised, eager curious expression, glasses catching light</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="3.3">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">3.3</div><div class="placeholder-desc">[Close-up] 박지호 — 긴장</div></div><div class="bubble thought bottom-left"><span class="speaker">박지호 (속)</span>(...아 떨려)</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">속마음</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s messy short black hair slightly tousled, round black-rim glasses, oversized black hoodie over white tee, close-up at far end of table, shoulders slightly tense, eyes flickering nervously, glasses reflecting light</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="3.4">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">3.4</div><div class="placeholder-desc">[Medium] 한재민 — 프로젝터 옆 자신만만</div></div><div class="bubble top-right"><span class="speaker">한재민</span>"이거 진짜 게임체인저거든요."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man mid-30s neat side-parted black hair styled with wax, light gray button-up shirt tucked into slate slacks, smartwatch on left wrist, standing beside projector confident posture, hands on laptop, slight smile of anticipation</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="3.5">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">3.5</div><div class="placeholder-desc">[Behind] 강민호 입장 — 문 뒤에서</div></div><div class="silence-marker">침묵 · 강민호 첫 등장의 무게</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span><span class="tag">Over-shoulder</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s short black hair slight gray streaks faint thin mustache, plain black crew-neck tee dark indigo denim jeans, mechanical wristwatch with leather strap, entering through meeting room doorway viewed from behind/over-shoulder of four already seated, quiet calm presence, slight back-light from corridor, medium shot, neutral expression</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 4 — 시연 시작 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 04</span><span class="page-desc">한재민 시연 — 30초만에 대시보드</span></div>
+
+  <div class="panel" data-id="4.1">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">4.1</div><div class="placeholder-desc">[Wide] 한재민 일어서서 양 손 펼침</div></div><div class="bubble top-right"><span class="speaker">한재민</span>"자, 5분만 주세요."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Wide</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man mid-30s neat side-parted black hair, light gray button-up shirt slate slacks, standing at front gesturing both hands open, confident presenter pose, projector screen behind blank, four others visible at table seated</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="4.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">4.2</div><div class="placeholder-desc">[Close-up] 키보드 + 프롬프트 입력</div></div><div class="bubble screen center-top">프롬프트: 마케팅 대시보드, 매출/방문자/전환율, 한국어 UI</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">UI</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up on hands typing on laptop keyboard, screen showing prompt input box with Korean text being entered</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="4.3">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">4.3</div><div class="placeholder-desc">[Medium] 한재민 + 코드 생성 화면</div></div><div class="bubble top-right"><span class="speaker">한재민</span>"보세요. 완성되는데..."</div><div class="bubble sfx bottom-right">타다닷...</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span><span class="tag">SFX</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man mid-30s watching projector screen with proud anticipation, screen showing code generating in real-time with cascading lines, slight gleam in eyes</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel full-bleed" data-id="4.4">
+    <div class="panel-canvas" data-aspect="full-bleed"><div class="placeholder"><div class="placeholder-id">4.4</div><div class="placeholder-desc">[Full bleed] 대시보드 완성 화면</div></div><div class="bubble large bottom-right"><span class="speaker">한재민</span>"...단 30초."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag size-full">Full bleed</span><span class="tag">임팩트</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, full-bleed view of completed marketing dashboard on projector screen, colorful charts and Korean UI, professional clean design, slight glow effect emphasizing the moment</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 5 — 회의실 술렁임 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 05</span><span class="page-desc">4인 첫 반응</span></div>
+
+  <div class="panel" data-id="5.1">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">5.1</div><div class="placeholder-desc">[Wide] 4인 동시 반응</div></div>
+      <div class="bubble top-left"><span class="speaker">최태규</span>"허..."</div>
+      <div class="bubble top-right"><span class="speaker">윤소율</span>"어머 잠깐만요!"</div>
+      <div class="bubble bottom-left"><span class="speaker">박지호</span>"와..."</div>
+      <div class="bubble thought bottom-right"><span class="speaker">강민호</span>(침묵)</div>
+    </div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Wide</span><span class="tag">4인 컷</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, meeting room wide shot, four characters reacting simultaneously: balding 50s man mouth slightly open in surprise, 30 year old woman with iPad sitting up straighter raised eyebrows, late-20s man with messy hair eyes wide jaw slack, late-30s lean man with calm coffee unchanged, atmospheric energy mixed with stillness, cool office lighting warm screen glow</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="5.2">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">5.2</div><div class="placeholder-desc">[Medium] 한재민 만족스러운 미소</div></div><div class="bubble top-left"><span class="speaker">한재민</span>"5분 전엔 없던 게 지금 돌아가요."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man mid-30s satisfied smile one hand gesturing at the dashboard on screen, confident posture, warm screen glow on his side</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="5.3">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">5.3</div><div class="placeholder-desc">[Close-up silent] 강민호 커피 한 모금</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span><span class="tag">Close-up</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s close-up profile slowly sipping black coffee from mug, eyes on screen with utterly neutral focus, surrounding murmur indicated by subtle motion blur of others in background</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 6 — 최태규의 첫 반응 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 06</span><span class="page-desc">최태규 — 계산기 본능</span></div>
+
+  <div class="panel silent" data-id="6.1">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">6.1</div><div class="placeholder-desc">[Close-up silent] 최태규 시선</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man early-50s balding side hair close-up portrait staring intently at projector screen, mind calculating behind tired sharp eyes, slight furrow of brow, warm window light from side</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="6.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">6.2</div><div class="placeholder-desc">[Close-up silent] 커피 머그 내려놓는 손</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of hand slowly setting down ceramic coffee mug on conference table, deliberate motion, mug surface details, shallow depth of field</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel full-bleed" data-id="6.3">
+    <div class="panel-canvas" data-aspect="full-bleed"><div class="placeholder"><div class="placeholder-id">6.3</div><div class="placeholder-desc">[Full bleed close-up] 최태규 한 마디</div></div><div class="bubble large center"><span class="speaker">최태규</span>"...그럼 우리 개발팀, 이 정도면..."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag size-full">Full bleed</span><span class="tag">말 흐림</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man early-50s full-bleed close-up portrait, mouth half-open mid-sentence trailing off, calculating expression visible, eyes elsewhere as if seeing budget numbers, dramatic but subtle composition</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="6.4">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">6.4</div><div class="placeholder-desc">[Reaction silent] 박지호 등 굳음</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span><span class="tag">반응 컷</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s reaction shot, back slightly stiffening, faint sweat at temple, eyes widening behind round glasses, mouth pressed thin, profile to three-quarter view, slightly desaturated tone</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 7 — 윤소율-한재민 흥분 동맹 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 07</span><span class="page-desc">윤소율 + 한재민 흥분 동맹</span></div>
+
+  <div class="panel" data-id="7.1">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">7.1</div><div class="placeholder-desc">[Medium] 윤소율 흥분</div></div><div class="bubble top-right"><span class="speaker">윤소율</span>"잠깐만요!<br>이거 제가 직접 만들 수 있는 거예요?"</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean woman age 30 leaning forward in chair holding iPad up showing design mockups, animated excited expression with raised eyebrows, hand gesture mid-air, glasses catching light, warm energetic illumination</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="7.2">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">7.2</div><div class="placeholder-desc">[Two-shot] 한재민 맞장구</div></div><div class="bubble top-left"><span class="speaker">한재민</span>"그렇죠! 그게 핵심이에요!"</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Two-shot</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man mid-30s half-turned toward Yoon Soyul with enthusiastic agreement expression, both hands open in welcoming gesture, two-shot composition, warm collaborative atmosphere</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="7.3">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">7.3</div><div class="placeholder-desc">[Wide] 빠른 대화 + 박지호 그늘</div></div>
+      <div class="bubble top-left"><span class="speaker">윤소율</span>"디자인팀에서 바로—"</div>
+      <div class="bubble top-right"><span class="speaker">한재민</span>"임팩트가 거기 있어요!"</div>
+      <div class="bubble bottom-left"><span class="speaker">윤소율</span>"정말요?"</div>
+      <div class="bubble bottom-right"><span class="speaker">한재민</span>"네 진짜로요!"</div>
+    </div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Wide</span><span class="tag">빠른 대화</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, meeting room partial wide shot, Yoon Soyul and Han Jaemin in animated quick exchange foreground with hand gestures, Park Jiho visible at edge with darkening expression slowly fading from frame focus</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 8 — 박지호 자기부정 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 08</span><span class="page-desc">박지호 자기부정 흥분</span></div>
+
+  <div class="panel" data-id="8.1">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">8.1</div><div class="placeholder-desc">[Close-up] 박지호 어색한 웃음</div></div>
+      <div class="bubble top-left"><span class="speaker">박지호</span>"와... 이거 진짜 미쳤네요 ㅋㅋ"</div>
+      <div class="bubble bottom-right"><span class="speaker">박지호</span>"저 같은 사람...<br>진짜 필요 없어지는 거 아니에요? ㅋㅋ"</div>
+    </div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">시그니처 대사</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s forcing awkward small smile that doesn't reach his eyes, one hand scratching back of neck nervously, looking at screen then away, slightly hunched posture, conflicted micro-expression, cool clinical lighting</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="8.2">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">8.2</div><div class="placeholder-desc">[Medium] 한재민 가벼운 위로</div></div><div class="bubble top-left"><span class="speaker">한재민</span>"지호씨도 같이 잘 쓰면 되죠~<br>도구잖아요 도구."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man mid-30s casual reassuring gesture with one hand toward Park Jiho, friendly but slightly dismissive smile, no big deal body language, two-shot with Jiho's slumped posture contrasted against Han's upright pose</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="8.3">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">8.3</div><div class="placeholder-desc">[Close-up silent] 박지호 시선 회피</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s close-up corner of mouth twitching faintly, gaze escaping to laptop screen, slight isolation despite being in group, soft shadow on half of face</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 9 — 강민호 침묵 시작 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 09</span><span class="page-desc">시선이 강민호에게 모임</span></div>
+
+  <div class="panel" data-id="9.1">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">9.1</div><div class="placeholder-desc">[Wide] 4인의 시선 강민호에게</div></div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Wide</span><span class="tag">시선 유도</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, meeting room wide shot, four characters' gazes converging toward Kang Minho who is still focused on his own laptop, quiet anticipation atmosphere, no movement</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="9.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">9.2</div><div class="placeholder-desc">[Close-up silent] 강민호 노트북 응시</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s close-up with own laptop open in front, screen reflected faintly in his calm eyes, completely neutral expression, sipping black coffee</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="9.3">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">9.3</div><div class="placeholder-desc">[Close-up] 강민호 손 + 화면 일부</div></div><div class="bubble screen top-right">필터: 매출 입력란 ◀ 9999999999999999999</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">UI</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of hands on keyboard with brief pause, partial view of laptop screen showing a number input field with absurdly long value entered, mechanical wristwatch visible</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 10 — 침묵 절정 + 한재민 어색 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 10</span><span class="page-desc">강민호 침묵 → 한재민 어색</span></div>
+
+  <div class="panel" data-id="10.1">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">10.1</div><div class="placeholder-desc">[Close-up] 깨진 화면</div></div><div class="bubble sfx top-right">지직</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">SFX</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of laptop/projector screen showing the demo dashboard with one chart visibly broken or showing error message, subtle glitch artifact, sharp focus</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent signature" data-id="10.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id"><span class="sig">10.2 · 시리즈 시그니처 침묵</span></div><div class="placeholder-desc">[Close-up silent] 강민호 무표정 응시</div></div><div class="silence-marker">침묵 · 시리즈 시그니처</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span><span class="tag size-full">시그니처</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s close-up completely expressionless gazing at screen, calm steady eyes, hint of inner observation, perfectly still, this is a signature silence panel for series</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="10.3">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">10.3</div><div class="placeholder-desc">[Medium] 한재민 어색한 미소</div></div><div class="bubble top-right"><span class="speaker">한재민</span>"...뭐, 디테일은 다듬으면 되죠."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man mid-30s medium shot, awkward forced smile, one hand adjusting collar of dress shirt nervously, smartwatch visible, confidence cracking subtly, slightly flatter lighting</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 11 — 회의실 최대 정적 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 11</span><span class="page-desc">정적의 무게 → 강민호의 결단</span></div>
+
+  <div class="panel silent" data-id="11.1">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">11.1</div><div class="placeholder-desc">[Wide silent] 회의실 5인 freeze</div></div><div class="silence-marker">침묵 · 가장 큰 정적 컷</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span><span class="tag">Wide</span><span class="tag">최대 정적</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, meeting room wide shot, all five characters frozen in their positions, Kang Minho focused on laptop, others all watching him intently, complete silence atmosphere, long shadows from windows, slightly desaturated, hold-breath moment</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="11.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">11.2</div><div class="placeholder-desc">[Extreme close-up] 강민호 노트북 닫는 손</div></div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Extreme close-up</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, extreme close-up of hand slowly closing laptop lid, mechanical wristwatch and leather strap visible, deliberate calm motion, table surface and coffee mug at edge of frame, soft cinematic lighting</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 12 — 강민호 첫 질문 ⚡ ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 12 ⚡</span><span class="page-desc">강민호의 첫 질문</span></div>
+
+  <div class="panel full-bleed signature" data-id="12.1">
+    <div class="panel-canvas" data-aspect="full-bleed"><div class="placeholder"><div class="placeholder-id"><span class="sig">12.1 · 시리즈 시그니처</span></div><div class="placeholder-desc">[Full bleed close-up] 강민호 첫 질문</div></div><div class="bubble large center"><span class="speaker">강민호</span>"...이거,<br>만 명한테 동시에 쓰면 어떻게 돼?"</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag size-full">Full bleed</span><span class="tag">시그니처</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s full-bleed medium close-up, looking directly at Han Jaemin off-screen, mouth opening to speak with utter calm, eyes steady not threatening but undeniable, slight side lighting creating subtle shadow on half of face, vertical composition for webtoon scroll, this is a pivotal cinematic panel</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="12.2">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">12.2</div><div class="placeholder-desc">[Reaction] 한재민 입 흐림</div></div><div class="bubble top-right"><span class="speaker">한재민</span>"어... 그건 인프라가..."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span><span class="tag">말 흐림</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man mid-30s reaction shot, confident smile faltering, mouth slightly open mid-word that trailed off, hand frozen mid-gesture, eyes searching for answer, soft sweat sheen on forehead, lighting suddenly flat</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 13 — 강민호 두 번째 질문 ⚡⚡ 시리즈 무게중심 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 13 ⚡⚡</span><span class="page-desc">시리즈 무게중심 컷 — 두 번째 질문</span></div>
+
+  <div class="panel full-bleed signature" data-id="13.1">
+    <div class="panel-canvas" data-aspect="full-bleed" style="min-height: 700px;"><div class="placeholder"><div class="placeholder-id"><span class="sig">13.1 · 시리즈 시그니처 (이번 화 가장 중요한 컷)</span></div><div class="placeholder-desc">[Full bleed extreme] 강민호 두 번째 질문</div></div><div class="bubble large center"><span class="speaker">강민호</span><br><br><strong style="font-size: 1.3em;">"그리고...<br>누가 새벽 3시에 깨워?"</strong></div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag size-full">Full bleed Extreme</span><span class="tag size-full">시리즈 시그니처</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-39s full medium shot from slight low angle making him quietly authoritative, laptop closed in front, coffee mug to side, calm direct gaze, mouth in mid-question, the whole meeting room background blurred but visible with all four other characters turned to him in silence, pivotal cinematic composition, this is the MOST IMPORTANT panel of the episode</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 14 — 정적 freeze ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 14</span><span class="page-desc">정적 freeze</span></div>
+
+  <div class="panel full-bleed silent" data-id="14.1">
+    <div class="panel-canvas" data-aspect="full-bleed"><div class="placeholder"><div class="placeholder-id">14.1</div><div class="placeholder-desc">[Full page overhead silent] 회의실 freeze</div></div><div class="silence-marker">침묵 · 가장 큰 비트</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span><span class="tag size-full">Full bleed</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, full meeting room overhead wide shot, all five characters frozen in their positions, complete silence atmosphere, long shadows on table from windows, slightly desaturated color grading, like a painting, hold-the-breath moment</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="14.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">14.2</div><div class="placeholder-desc">[Close-up silent] 한재민 손</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of hand frozen near microphone or laser pointer on conference table, fingers slightly trembling, looking for answer that won't come, sharp focus</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 15 — 잔여 반응 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 15</span><span class="page-desc">잔여 반응 — 박지호 · 윤소율 · 최태규</span></div>
+
+  <div class="panel silent" data-id="15.1">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">15.1</div><div class="placeholder-desc">[Close-up silent] 박지호 시선 떨림</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s close-up, eyes flickering between Kang Minho and screen and his own hands, processing the question's weight, glasses subtly reflecting screen glow</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="15.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">15.2</div><div class="placeholder-desc">[Close-up silent] 윤소율 입꼬리 굳음</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean woman age 30 close-up, the corner of her excited smile slightly stiffening as the question lands, iPad still in hand but lower than before, brief moment of doubt crossing her face</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="15.3">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">15.3</div><div class="placeholder-desc">[Close-up] 최태규 응시</div></div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">시선 컷</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man early-50s close-up, gazing steadily at Kang Minho from across the table, business mind weighing the question, no expression change but visible mental processing</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 16 — 회의 종료 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 16</span><span class="page-desc">어색하게 회의 종료</span></div>
+
+  <div class="panel" data-id="16.1">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">16.1</div><div class="placeholder-desc">[Medium] 최태규 일어남</div></div><div class="bubble top-right"><span class="speaker">최태규</span>"...일단 좋네.<br>좀 더 알아보자고."</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man early-50s standing up from chair gathering papers, neutral business-as-usual expression, no longer looking at projector screen, casual concluding gesture, restored normal office lighting</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="16.2">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">16.2</div><div class="placeholder-desc">[Wide] 회의실 정리 분위기</div></div><div class="bubble top-right"><span class="speaker">한재민</span>"아, 네! 자료 정리해서—"</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Wide</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, meeting room as people start to disperse, Han Jaemin closing laptop with hint of awkwardness, Yoon Soyul packing iPad, Park Jiho still slow to move, Kang Minho already standing quietly</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="16.3">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">16.3</div><div class="placeholder-desc">[Two-shot] 윤소율-한재민 복도 대화</div></div>
+      <div class="bubble top-left"><span class="speaker">윤소율</span>"근데 진짜 가능성 있지 않아요?"</div>
+      <div class="bubble top-right"><span class="speaker">한재민</span>"당연하죠~"</div>
+      <div class="bubble bottom-left"><span class="speaker">윤소율</span>"디자인팀에 바로 도입해봐요!"</div>
+    </div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Two-shot</span><span class="tag">복도</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Yoon Soyul and Han Jaemin walking together in modern office corridor with animated conversation, hand gestures, both still excited and energized, glass walls and indoor plants visible, warm corridor lighting</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 17 — 잔여 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 17</span><span class="page-desc">박지호 멍 + 강민호 일상</span></div>
+
+  <div class="panel silent" data-id="17.1">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">17.1</div><div class="placeholder-desc">[Medium silent] 박지호 책상 멍</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s seated alone at his open-office desk, monitor turned off reflecting nothing, hands in lap, staring blankly into middle distance, other employees blurred in background, isolation in workplace, slightly cool lighting</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="17.2">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">17.2</div><div class="placeholder-desc">[Wide] 강민호 자리</div></div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Wide</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s seated at his desk in quiet corner of office, opening laptop calmly, coffee mug placed beside, no expression change from meeting, back to work as usual, medium-wide shot showing context</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="17.3">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">17.3</div><div class="placeholder-desc">[Close-up silent] 강민호 커피 한 모금</div></div><div class="silence-marker">침묵 · 일상으로 돌아감</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-30s close-up, taking a sip of black coffee, eyes calm focused on his own work, the meeting room moment already filed away in his mind</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<div class="scene-divider">그날 밤 · NIGHT</div>
+
+<!-- ============ PAGE 18 — 박지호의 밤 도입 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 18</span><span class="page-desc">박지호의 자취방 · 23:14</span></div>
+
+  <div class="panel silent" data-id="18.1">
+    <div class="panel-canvas" data-aspect="wide"><div class="placeholder"><div class="placeholder-id">18.1</div><div class="placeholder-desc">[Wide silent] 자취방, 책상 램프만</div></div><div class="bubble narration top-right">그날 밤 · 23:14</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span><span class="tag">Wide</span><span class="tag">자막</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, small modest Korean studio apartment interior at night, single bed with rumpled covers, low desk with laptop, small fridge, empty instant noodle cup, posters of code conferences on wall, only desk lamp providing warm yellow light, rest of room in deep shadow, establishing shot wide angle</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="18.2">
+    <div class="panel-canvas" data-aspect="medium"><div class="placeholder"><div class="placeholder-id">18.2</div><div class="placeholder-desc">[Medium] 박지호 바닥에 앉아 노트북</div></div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Medium</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s seated cross-legged on floor at low desk (no longer wearing hoodie hood), glasses reflecting laptop screen light, intense focused expression typing prompt, half-eaten convenience store dinner beside him, only warm desk lamp lighting</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="18.3">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">18.3</div><div class="placeholder-desc">[Close-up] 박지호 프롬프트 입력</div></div><div class="bubble screen center-top">프롬프트: 마케팅 대시보드, 매출/방문자/전환율, 한국어 UI</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">UI</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of laptop screen showing prompt being typed slowly in Korean, the exact same text Han Jaemin used in meeting, soft yellow lamp glow</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 19 — 비슷한 앱 생성 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 19</span><span class="page-desc">비슷한 앱이 만들어지다</span></div>
+
+  <div class="panel" data-id="19.1">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">19.1</div><div class="placeholder-desc">[Close-up] 생성된 앱 화면</div></div><div class="bubble sfx top-right">타다닷...</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">SFX</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of laptop screen showing newly generated marketing dashboard application running successfully, very similar to what Han Jaemin demoed, charts and Korean UI, screen glow lighting Park Jiho's face from below</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel silent" data-id="19.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">19.2</div><div class="placeholder-desc">[Close-up silent] 박지호 멍, 식은땀</div></div><div class="silence-marker">침묵</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag silent">침묵</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s close-up, slack-jawed expression watching his own creation, slight sweat sheen, warm lamp creating soft shadow on half his face, lonely contemplation</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="19.3">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">19.3</div><div class="placeholder-desc">[Close-up] 박지호 손 멈춤</div></div><div class="bubble thought bottom-right"><span class="speaker">박지호 (속)</span>(...진짜 5분 만에 됐네.)</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">속마음</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of fingertip on mouse frozen in place, screen still showing the working dashboard, no celebration, just stillness</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 20 — 강민호 회상 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 20</span><span class="page-desc">강민호 질문 회상</span></div>
+
+  <div class="panel" data-id="20.1" style="background: linear-gradient(180deg, var(--surface), rgba(129,140,248,0.08));">
+    <div class="panel-canvas" data-aspect="medium" style="background: linear-gradient(135deg, rgba(129,140,248,0.15), rgba(20,20,31,0.8));"><div class="placeholder"><div class="placeholder-id">20.1</div><div class="placeholder-desc">[Memory inset · 블루 톤] 강민호 회상</div></div><div class="bubble large center" style="background: rgba(129,140,248,0.95); color: white;"><span class="speaker" style="color: #fde68a;">강민호 (회상)</span>"...누가 새벽 3시에 깨워?"</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag" style="background: rgba(129,140,248,0.2); color: var(--indigo);">Flashback</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, ghostly visual recall of Kang Minho from earlier meeting, semi-transparent overlay in cool blue monochromatic tint, his calm face superimposed, suggesting the question haunting</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="20.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">20.2</div><div class="placeholder-desc">[Close-up] 박지호 작은 독백</div></div><div class="bubble thought bottom-left"><span class="speaker">박지호 (속, 작게)</span>(...근데 그거, 진짜 누가 깨우긴 하나?)</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">속마음</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, Korean man late-20s close-up, lips barely moving as he echoes the question to himself, eyes searching, the lamp glow now feeling cold despite its warmth, isolation deepening</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 21 — 검색 ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 21</span><span class="page-desc">검색창에 "운영 사고"</span></div>
+
+  <div class="panel" data-id="21.1">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">21.1</div><div class="placeholder-desc">[Close-up] 검색창 타이핑</div></div><div class="bubble screen center-top">운영 사고|</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">UI</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of laptop screen showing Korean search engine homepage, search query "운영 사고" being typed slowly letter by letter into search bar, cursor still blinking</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+
+  <div class="panel" data-id="21.2">
+    <div class="panel-canvas" data-aspect="close-up"><div class="placeholder"><div class="placeholder-id">21.2</div><div class="placeholder-desc">[Close-up] 자동완성 "운영 사고 새벽"</div></div><div class="bubble screen center-top">운영 사고 새벽 ▼</div></div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag">Close-up</span><span class="tag">UI</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, close-up of search bar with autocomplete dropdown appearing, "운영 사고 새벽" highlighted by cursor hover, multiple other suggestions visible below it</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 22 — 후크 마지막 ⚡⚡ ============ -->
+<div class="page">
+  <div class="page-header"><span class="page-num">PAGE 22 ⚡⚡</span><span class="page-desc">다음 화 훅 — 블로그 제목</span></div>
+
+  <div class="panel full-bleed signature" data-id="22.1">
+    <div class="panel-canvas" data-aspect="full-bleed" style="min-height: 600px;"><div class="placeholder"><div class="placeholder-id"><span class="sig">22.1 · 다음 화 훅</span></div><div class="placeholder-desc">[Full bleed extreme close-up] 블로그 제목</div></div>
+      <div class="bubble large center" style="background: #1a1a1a; color: #fde68a; border: 2px solid var(--amber); font-size: 22px; max-width: 85%;"><span class="speaker" style="color: var(--rose);">블로그 글 제목</span>"당신의 서비스, 새벽 3시에 누가 받습니까?"</div>
+      <div class="bubble narration bottom-right" style="font-style: italic; color: var(--dim); background: transparent; border: none; box-shadow: none;">to be continued...</div>
+    </div>
+    <div class="panel-info"><div class="panel-meta"><span class="tag size-full">Full bleed</span><span class="tag size-full">다음 화 훅</span></div><div class="panel-actions"><button class="icon-btn" onclick="togglePrompt(this)">프롬프트</button></div></div>
+    <div class="prompt-detail"><pre>Korean webtoon style, extreme close-up on laptop screen showing search engine results page, top result blog post title clearly visible in Korean: "당신의 서비스, 새벽 3시에 누가 받습니까?", cursor hovering over the link, soft focus suggesting moment of decision, dramatic chiaroscuro lighting with screen as only light source, Park Jiho's face barely visible at edge of frame</pre><button class="icon-btn" onclick="copyPrompt(this)">복사</button><span class="copy-result"></span></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="ep-footer">
+  <div class="next-hook">
+    <div class="label">NEXT EPISODE</div>
+    <p>박지호가 그 블로그를 클릭하는 순간 — 또는, 다음 날 아침 강민호의 자리 앞에 서다.</p>
+  </div>
+  <p>Episode 01 · 보따리 · 양육 하네스 시리즈</p>
+  <p style="margin-top: 12px; font-size: 12px; color: var(--dim);">localStorage에 저장된 이미지는 이 브라우저에서만 유지됩니다.<br>다른 환경으로 옮기려면 "전체 이미지 내보내기" 버튼 사용.</p>
+</div>
+
+</div>
+
+<script>
+// ============ Image upload + localStorage ============
+const STORAGE_KEY = 'episode-01-storyboard';
+let imageStore = {};
+
+function loadImages() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      imageStore = JSON.parse(stored);
+      Object.keys(imageStore).forEach(panelId => {
+        applyImageToPanel(panelId, imageStore[panelId]);
+      });
+    }
+  } catch (e) { console.warn('Image load failed', e); }
+}
+
+function saveImages() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(imageStore));
+  } catch (e) {
+    alert('localStorage 용량 초과. "전체 이미지 내보내기" 후 일부 삭제하세요.');
+  }
+}
+
+function applyImageToPanel(panelId, dataUrl) {
+  const panel = document.querySelector(`[data-id="${panelId}"]`);
+  if (!panel) return;
+  const canvas = panel.querySelector('.panel-canvas');
+  const existing = canvas.querySelector('img');
+  if (existing) existing.remove();
+  const placeholder = canvas.querySelector('.placeholder');
+  if (placeholder) placeholder.style.display = 'none';
+  const silenceMarker = canvas.querySelector('.silence-marker');
+  if (silenceMarker) silenceMarker.style.opacity = '0';
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.style.position = 'relative';
+  img.style.zIndex = '0';
+  canvas.insertBefore(img, canvas.firstChild);
+  canvas.classList.add('has-image');
+}
+
+function handleFile(panelId, file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    imageStore[panelId] = e.target.result;
+    saveImages();
+    applyImageToPanel(panelId, e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+document.querySelectorAll('.panel-canvas').forEach(canvas => {
+  const panel = canvas.closest('.panel');
+  const panelId = panel.dataset.id;
+
+  canvas.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = e => handleFile(panelId, e.target.files[0]);
+    input.click();
+  });
+
+  canvas.addEventListener('dragover', e => {
+    e.preventDefault();
+    canvas.classList.add('drag-over');
+  });
+  canvas.addEventListener('dragleave', () => canvas.classList.remove('drag-over'));
+  canvas.addEventListener('drop', e => {
+    e.preventDefault();
+    canvas.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(panelId, e.dataTransfer.files[0]);
+  });
+});
+
+function togglePrompt(btn) {
+  const detail = btn.closest('.panel').querySelector('.prompt-detail');
+  detail.classList.toggle('open');
+  btn.textContent = detail.classList.contains('open') ? '닫기' : '프롬프트';
+}
+
+function copyPrompt(btn) {
+  const pre = btn.closest('.prompt-detail').querySelector('pre');
+  const text = pre.textContent.replace(/--negative:.*/, '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const result = btn.nextElementSibling;
+    result.textContent = '✓ 복사됨';
+    setTimeout(() => result.textContent = '', 2000);
+  });
+}
+
+function copyAllPrompts() {
+  const prompts = [];
+  document.querySelectorAll('.panel').forEach(p => {
+    const id = p.dataset.id;
+    const pre = p.querySelector('.prompt-detail pre');
+    if (pre) prompts.push(`=== Panel ${id} ===\n${pre.textContent.trim()}\n`);
+  });
+  navigator.clipboard.writeText(prompts.join('\n')).then(() => {
+    alert(`${prompts.length}개 프롬프트 복사됨`);
+  });
+}
+
+function clearAll() {
+  if (!confirm('업로드한 모든 이미지를 삭제하시겠습니까?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  imageStore = {};
+  document.querySelectorAll('.panel-canvas').forEach(canvas => {
+    const img = canvas.querySelector('img');
+    if (img) img.remove();
+    canvas.classList.remove('has-image');
+    const placeholder = canvas.querySelector('.placeholder');
+    if (placeholder) placeholder.style.display = '';
+    const silenceMarker = canvas.querySelector('.silence-marker');
+    if (silenceMarker) silenceMarker.style.opacity = '';
+  });
+}
+
+function exportImages() {
+  const count = Object.keys(imageStore).length;
+  if (count === 0) {
+    alert('업로드된 이미지가 없습니다.');
+    return;
+  }
+  const blob = new Blob([JSON.stringify(imageStore, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'episode-01-images.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+loadImages();
+</script>
+
+</body>
+</html>
