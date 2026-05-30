@@ -66,6 +66,52 @@ SIZE_MAP = {
     "full-bleed": "1024x1536",
 }
 
+# ───── Per-panel quality classification ─────────────────────
+# LOW: 단순한 컷 — UI 화면, 손 close-up, silent atmospheric, 배경 establishing
+# MEDIUM: 캐릭터 표정·연출이 중요한 컷 (기본 — .env의 QUALITY 사용)
+# 시그니처 컷은 medium (필요시 --quality high로 override 가능)
+LOW_QUALITY_PANELS = {
+    # 도입 환경·UI
+    "1.2",   # 노트북 화면 이메일
+    "2.1",   # 강민호 뒷모습 로비 (silent)
+    "2.2",   # 회의실 외부 복도 (빈 풍경)
+    "4.2",   # 키보드 close-up
+    # silent atmospheric close-ups
+    "5.3",   # 강민호 커피 한 모금
+    "6.1",   # 최태규 silent close-up
+    "6.2",   # 커피 머그 내려놓는 손
+    "6.4",   # 박지호 silent reaction
+    "8.3",   # 박지호 시선 회피
+    "9.2",   # 강민호 silent (10.2가 더 중요)
+    "9.3",   # 강민호 손 + 화면 일부
+    # UI·screen 컷
+    "10.1",  # 깨진 화면
+    "11.2",  # 노트북 닫는 손
+    "14.2",  # 한재민 손
+    # 잔여 reaction silent
+    "15.1",  # 박지호 silent
+    "15.2",  # 윤소율 silent
+    "15.3",  # 최태규 silent
+    "17.1",  # 박지호 멍 (회의 후)
+    "17.2",  # 강민호 자리 (일상)
+    "17.3",  # 강민호 silent (일상)
+    # 자취방 UI·손
+    "18.3",  # 프롬프트 입력 화면
+    "19.1",  # 생성된 앱 화면
+    "19.3",  # 손 close-up
+    # 검색 UI
+    "21.1",  # 검색창 타이핑
+    "21.2",  # 자동완성
+}
+
+def get_quality_for_panel(panel_id, override=None):
+    """Return quality tier for a panel. override > LOW classification > .env default."""
+    if override:
+        return override
+    if panel_id in LOW_QUALITY_PANELS:
+        return "low"
+    return QUALITY  # .env default (medium)
+
 # ───── Panel definitions (67 panels) ─────────────────────────
 # Tuple: (id, characters_in_scene, scene_description, aspect)
 PANELS = [
@@ -155,15 +201,16 @@ PANELS = [
 ]
 
 # ───── Generation function ───────────────────────────────────
-def generate_panel(panel, force=False):
+def generate_panel(panel, force=False, quality_override=None):
     panel_id, characters, scene, aspect = panel
     out_path = OUTPUT_DIR / f"{panel_id}.png"
 
     if out_path.exists() and not force:
-        return "skip"
+        return "skip", None
 
     full_prompt = STYLE + scene
     size = SIZE_MAP.get(aspect, "1024x1024")
+    quality = get_quality_for_panel(panel_id, override=quality_override)
 
     try:
         if characters:
@@ -171,7 +218,7 @@ def generate_panel(panel, force=False):
             if not available:
                 # fallback to text-only
                 result = client.images.generate(
-                    model=MODEL, prompt=full_prompt, size=size, quality=QUALITY, n=1
+                    model=MODEL, prompt=full_prompt, size=size, quality=quality, n=1
                 )
             else:
                 # gpt-image-1 supports multi-image reference via images.edit
@@ -182,7 +229,7 @@ def generate_panel(panel, force=False):
                         image=image_files,
                         prompt=full_prompt,
                         size=size,
-                        quality=QUALITY,
+                        quality=quality,
                         n=1,
                     )
                 finally:
@@ -190,21 +237,36 @@ def generate_panel(panel, force=False):
                         f.close()
         else:
             result = client.images.generate(
-                model=MODEL, prompt=full_prompt, size=size, quality=QUALITY, n=1
+                model=MODEL, prompt=full_prompt, size=size, quality=quality, n=1
             )
 
         b64 = result.data[0].b64_json
         out_path.write_bytes(base64.b64decode(b64))
-        return "ok"
+        return "ok", quality
     except Exception as e:
-        return f"error: {e}"
+        return f"error: {e}", quality
 
 
 # ───── Main ──────────────────────────────────────────────────
+def estimate_cost(targets, quality_override=None):
+    """Rough cost estimate by quality tier (gpt-image-1 list price 기준)."""
+    # 대략적 단가 (size별 가중치 평균 — 1024x1024 기준)
+    PRICES = {"low": 0.011, "medium": 0.042, "high": 0.167}
+    total = 0
+    by_tier = {"low": 0, "medium": 0, "high": 0}
+    for panel in targets:
+        q = get_quality_for_panel(panel[0], override=quality_override)
+        by_tier[q] = by_tier.get(q, 0) + 1
+        total += PRICES.get(q, 0.042)
+    return total, by_tier
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", help="comma-separated panel ids (e.g., 12.1,13.1)")
     parser.add_argument("--force", action="store_true", help="regenerate even if exists")
+    parser.add_argument("--quality", choices=["low", "medium", "high"],
+                        help="모든 패널에 동일 품질 강제 (기본: low/medium 자동 분기)")
     args = parser.parse_args()
 
     targets = PANELS
@@ -219,8 +281,15 @@ def main():
     if missing:
         sys.exit(f"❌ 캐릭터 시트 없음: {missing}\n   먼저 generate_character_sheets.py 실행")
 
+    # 비용·품질 분포 사전 표시
+    est_total, by_tier = estimate_cost(targets, quality_override=args.quality)
     print(f"=== 패널 생성 ({len(targets)}개) ===")
-    print(f"모델: {MODEL} | 품질: {QUALITY}")
+    print(f"모델: {MODEL}")
+    if args.quality:
+        print(f"품질: {args.quality} (강제 override)")
+    else:
+        print(f"품질 자동 분기: low={by_tier.get('low',0)}장 · medium={by_tier.get('medium',0)}장 · high={by_tier.get('high',0)}장")
+    print(f"예상 비용: ~${est_total:.2f}")
     print(f"출력: {OUTPUT_DIR}\n")
 
     t0 = time.time()
@@ -230,20 +299,21 @@ def main():
     for i, panel in enumerate(targets, 1):
         panel_id = panel[0]
         chars = ", ".join(panel[1]) or "(no chars)"
-        prefix = f"[{i:2d}/{len(targets)}] {panel_id:<6} ({chars[:40]:<40})"
+        q = get_quality_for_panel(panel_id, override=args.quality)
+        prefix = f"[{i:2d}/{len(targets)}] {panel_id:<6} [{q:<6}] ({chars[:30]:<30})"
         print(prefix, end=" ", flush=True)
 
-        result = generate_panel(panel, force=args.force)
-        if result == "ok":
+        status, _ = generate_panel(panel, force=args.force, quality_override=args.quality)
+        if status == "ok":
             print("✅")
             ok += 1
-        elif result == "skip":
+        elif status == "skip":
             print("⏭️")
             skip += 1
         else:
-            print(f"❌  {result}")
+            print(f"❌  {status}")
             err += 1
-            failures.append((panel_id, result))
+            failures.append((panel_id, status))
 
     elapsed = time.time() - t0
     print(f"\n=== 완료 ({elapsed/60:.1f}분) ===")
