@@ -1,2 +1,18 @@
 projects/
 .hamstern/
+
+# API 키 (절대 commit 금지)
+scripts/.env
+.env
+
+# 생성된 이미지 (선택적으로 commit, 큰 파일이라 기본은 ignore)
+_workspace/character-sheets/*.png
+_workspace/character-sheets/*.jpg
+episodes/episode-01/images/*.png
+episodes/episode-01/images/*.jpg
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
