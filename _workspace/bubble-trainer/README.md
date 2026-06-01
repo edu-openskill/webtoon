@@ -11,7 +11,8 @@
 | 파일 | 역할 |
 |------|------|
 | `bubble_model.py` | **모델(CLI)** — 순수 Python MLP. train / predict / eval / selftest |
-| `index.html` | **라벨러(오프라인 브라우저)** — 이미지+박스 위 말풍선 드래그 교정 → `dataset.json` |
+| `labeler.html` | **★ 라벨러 v2 (권장)** — 합성 패널 100장 자동생성 + **브라우저 내 즉시학습**. 드래그→저장하면 그 자리서 모델 재학습, 다음 패널은 학습된 예측으로 미리 배치. 샘플 소싱 불필요. 화살표/`S`/`X` 단축키. `model.json`은 `bubble_model.py`와 동일 포맷(상호호환 검증됨) |
+| `index.html` | 라벨러 v1 — 실제 패널 메타(`panels.sample.json`)에 이미지 올려 드래그 교정 → `dataset.json` 내보내 CLI로 학습 |
 | `panels.sample.json` | 시드 패널 메타데이터(얼굴/몸통 박스·말풍선). 03_panel_layout.md 기반 |
 | `dataset.sample.json` | 데모/회귀용 시드 학습셋(사람 교정 시뮬레이션) |
 | 스키마 | `.claude/skills/panel-layout-planning/references/storyboard-data-spec.md` |

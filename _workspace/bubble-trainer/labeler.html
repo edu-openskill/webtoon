@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>말풍선 라벨러 v2 · 합성패널 + 즉시학습</title>
+<!-- 의존성 0 · CDN 없음 · 오프라인. 합성 패널 자동생성 + 브라우저 내 MLP 학습(bubble_model.py 포팅). -->
+<style>
+  :root{--bg:#0e0e16;--panel:#15151f;--border:#2a2a3a;--text:#e8e8f0;--muted:#9a9ab0;
+    --dim:#6a6a80;--indigo:#818cf8;--emerald:#34d399;--amber:#fbbf24;--rose:#fb7185;--cyan:#22d3ee;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px}
+  header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0}
+  header .sub{color:var(--muted);font-size:12px}
+  .layout{display:flex;height:calc(100vh - 50px)}
+  .stage-wrap{flex:1;overflow:auto;padding:24px;display:flex;align-items:flex-start;justify-content:center}
+  .side{width:340px;border-left:1px solid var(--border);padding:16px;overflow-y:auto;background:var(--panel)}
+  .stage{position:relative;background:linear-gradient(160deg,#1a1a28,#101018);border:1px solid var(--border);box-shadow:0 8px 40px rgba(0,0,0,0.5);user-select:none;overflow:hidden}
+  /* 합성 인물 */
+  .torso{position:absolute;border-radius:40% 40% 12% 12%/55% 55% 12% 12%;opacity:0.92}
+  .head{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .head .eyes{display:flex;gap:22%;margin-top:6%}
+  .head .eyes i{display:block;width:11%;height:11%;min-width:3px;min-height:3px;background:#0b0b12;border-radius:50%}
+  .nm{position:absolute;font-size:10px;font-weight:700;padding:0 4px;border-radius:3px;white-space:nowrap;transform:translateX(-50%)}
+  .fbox{position:absolute;border:1px dashed rgba(52,211,153,0.5);border-radius:4px;pointer-events:none}
+  /* 말풍선 */
+  .bubble{position:absolute;background:#fff;color:#111;border-radius:14px;padding:5px 9px;font-size:11px;font-weight:600;
+    cursor:grab;display:flex;align-items:center;justify-content:center;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.45);border:1.5px solid #111;line-height:1.25;overflow:hidden}
+  .bubble.dragging{cursor:grabbing;outline:2px solid var(--amber);z-index:50}
+  .bubble.thought{border-style:dashed;background:#eef;color:#334}
+  .bubble.narration{background:#14141f;color:#e8e8f0;font-style:italic;border-color:#444}
+  .bubble.screen{background:#0a0a0a;color:var(--emerald);font-family:monospace;border-color:var(--emerald)}
+  .bubble.sfx{background:transparent;color:var(--amber);border:none;box-shadow:none;font-style:italic;font-weight:800}
+  .bubble .sp{position:absolute;top:-15px;left:0;font-size:9px;color:var(--rose);font-weight:700;white-space:nowrap}
+  .ghost{position:absolute;border:1.5px dashed var(--amber);border-radius:14px;pointer-events:none;opacity:0.65;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--amber);font-weight:700}
+  svg.tails{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .grp{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+  .grp h3{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin:0 0 8px}
+  button{background:#23233340;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-size:12px;cursor:pointer;margin:0 4px 6px 0}
+  button:hover{background:#2e2e44}
+  button.primary{background:var(--indigo);color:#0a0e2a;border-color:var(--indigo);font-weight:700}
+  button.go{background:var(--emerald);color:#06281d;border-color:var(--emerald);font-weight:700;font-size:13px;padding:9px 14px}
+  button.ghostbtn{background:transparent}
+  .row{display:flex;gap:8px;align-items:center}
+  .stat{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted var(--border);font-size:12px}
+  .stat b{color:var(--emerald)}
+  .bar{height:7px;background:#0a0a12;border-radius:4px;overflow:hidden;margin:6px 0}
+  .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--indigo),var(--cyan));width:0%}
+  .log{font-family:monospace;font-size:11px;color:var(--muted);background:#0a0a12;border:1px solid var(--border);border-radius:6px;padding:8px;height:120px;overflow-y:auto;white-space:pre-wrap}
+  .hint{font-size:11px;color:var(--dim);line-height:1.5;margin-top:6px}
+  kbd{background:#0a0a12;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px;font-family:monospace}
+  code{background:#0a0a12;padding:1px 4px;border-radius:3px;font-size:11px}
+  .pill{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700}
+  .pill.model{background:rgba(251,191,36,0.15);color:var(--amber)}
+  .pill.heur{background:rgba(129,140,248,0.15);color:var(--indigo)}
+  .pill.saved{background:rgba(52,211,153,0.18);color:var(--emerald)}
+</style>
+</head>
+<body>
+<header>
+  <h1>말풍선 라벨러 v2</h1>
+  <span class="sub">합성 패널 100장 · 드래그로 베스트 위치 교정 → <b>즉시 학습</b>(브라우저 내 MLP) · <kbd>←</kbd>/<kbd>→</kbd> 이동, <kbd>S</kbd> 저장&다음, <kbd>X</kbd> 건너뛰기</span>
+</header>
+<div class="layout">
+  <div class="stage-wrap">
+    <div id="stage" class="stage" style="width:520px;height:660px"></div>
+  </div>
+  <div class="side">
+    <div class="grp">
+      <h3>진행</h3>
+      <div class="stat"><span>패널</span><b id="pIdx">– / –</b></div>
+      <div class="stat"><span>교정한 패널</span><b id="pDone">0</b></div>
+      <div class="stat"><span>학습 샘플(말풍선)</span><b id="nSamples">0</b></div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnPrev">← 이전</button>
+        <button id="btnSkip" class="ghostbtn">건너뛰기 →</button>
+      </div>
+      <button id="btnSaveNext" class="go" style="width:100%;margin-top:6px">교정 저장 &amp; 다음 →</button>
+      <p class="hint">현재 배치 출처: <span id="srcPill" class="pill heur">heuristic</span><br>
+      말풍선을 드래그해 베스트 위치로 옮긴 뒤 저장. 노랑 점선=모델 예측(있을 때).</p>
+    </div>
+    <div class="grp">
+      <h3>학습</h3>
+      <div class="stat"><span>상태</span><b id="trState">대기</b></div>
+      <div class="stat"><span>train MSE</span><b id="trMse">–</b></div>
+      <div class="bar"><i id="trBar"></i></div>
+      <label class="row" style="font-size:12px;color:var(--muted);gap:6px"><input type="checkbox" id="chkAuto" checked> 저장 시 자동 재학습</label>
+      <label class="row" style="font-size:12px;color:var(--muted);gap:6px"><input type="checkbox" id="chkGhost" checked> 모델 예측(노랑) 표시</label>
+      <div style="margin-top:8px">
+        <button id="btnTrain">전체 재학습</button>
+        <button id="btnWarm" class="ghostbtn" title="100장 휴리스틱으로 워밍업 라벨 생성+학습">휴리스틱 워밍업</button>
+      </div>
+    </div>
+    <div class="grp">
+      <h3>데이터 / 모델</h3>
+      <button id="btnExpData" class="primary">dataset.json</button>
+      <button id="btnExpModel" class="primary">model.json</button>
+      <button id="btnReset" class="ghostbtn">초기화</button>
+      <p class="hint">model.json은 <code>bubble_model.py</code>와 동일 포맷 — CLI <code>predict</code>에 바로 사용 가능.</p>
+    </div>
+    <div class="grp" style="border:none">
+      <h3>로그</h3>
+      <div id="log" class="log"></div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+/* ============================================================
+   말풍선 라벨러 v2 — 합성 패널 + 브라우저 내 MLP 즉시학습
+   - 피처/모델 수식은 bubble_model.py 와 1:1 일치 (model.json 상호호환)
+   ============================================================ */
+const GRID=4, TYPES=["speech","thought","narration","screen","sfx"];
+const FEATLEN=4+4+2+5+1+GRID*GRID; // 32
+const SIZES=[FEATLEN,32,16,2];
+const N_PANELS=100, SEED=1234;
+const LS_KEY="bubble-labeler-v2";
+const NAMES=["강민호","이주아","박서","정우","한별","오세훈","유민","서지","임찬","고은","최다","노아"];
+const W_HUMAN=4; // 사람 교정 샘플 가중치(=auto 대비 학습 비중)
+
+const $=id=>document.getElementById(id);
+const stage=$("stage");
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function log(m){const e=$("log");const t=new Date().toLocaleTimeString('ko-KR',{hour12:false});e.textContent+=`[${t}] ${m}\n`;e.scrollTop=e.scrollHeight;}
+
+/* ---------- 시드 RNG (mulberry32) + 가우시안 ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gaussFactory(rng){let spare=null;return function(mean,sd){if(spare!==null){const v=spare;spare=null;return mean+sd*v;}let u,v,s;do{u=rng()*2-1;v=rng()*2-1;s=u*u+v*v;}while(s>=1||s===0);const m=Math.sqrt(-2*Math.log(s)/s);spare=v*m;return mean+sd*(u*m);};}
+
+/* ---------- 피처 추출 (bubble_model.py extract_features 와 동일) ---------- */
+const boxRect=b=>[b.x-b.w/2,b.y-b.h/2,b.x+b.w/2,b.y+b.h/2];
+function cellRect(i){const r=Math.floor(i/GRID),c=i%GRID,s=1/GRID;return[c*s,r*s,c*s+s,r*s+s];}
+function inter(a,b){const w=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0]));const h=Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));return w*h;}
+function speakerChar(p,b){return p.characters.find(c=>c.name===b.speaker)||p.characters[0];}
+function occGrid(p,b){const g=new Array(16).fill(0);const others=p.characters.filter(c=>c.name!==b.speaker);const ca=(1/GRID)**2;
+  for(let i=0;i<16;i++){const cr=cellRect(i);let cov=0;for(const c of others){if(c.face)cov+=inter(cr,boxRect(c.face));if(c.torso)cov+=inter(cr,boxRect(c.torso));}g[i]=clamp(cov/ca,0,1);}return g;}
+function extractFeatures(p,b){const sp=speakerChar(p,b);const f=sp.face||{x:.5,y:.5,w:0,h:0};const t=sp.torso||{x:0,y:0,w:0,h:0};
+  const ty=new Array(5).fill(0);const ti=TYPES.indexOf(b.type);ty[ti>=0?ti:0]=1;
+  const ar=(p.imageW||1)/(p.imageH||1);const v=[f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h,b.w,b.h,...ty,ar/(ar+1),...occGrid(p,b)];
+  return v;}
+
+/* ---------- 휴리스틱 (얼굴 근처 + 빈 칸) — py heuristic_place 와 동일 ---------- */
+function heuristicPlace(p,b){const sp=speakerChar(p,b);const f=sp.face||{x:.5,y:.5,w:.1,h:.1};const occ=occGrid(p,b);
+  let best=null,bc=1e9;for(const deg of[-90,-60,-120,-30,-150,0,180]){const r=deg*Math.PI/180;
+    const x=clamp(f.x+Math.cos(r)*(f.w/2+b.w/2+.02),b.w/2,1-b.w/2),y=clamp(f.y+Math.sin(r)*(f.h/2+b.h/2+.02),b.h/2,1-b.h/2);
+    const ci=clamp(Math.floor(y*GRID),0,3)*GRID+clamp(Math.floor(x*GRID),0,3);
+    const fo=inter([x-b.w/2,y-b.h/2,x+b.w/2,y+b.h/2],boxRect(f));const cost=occ[ci]+fo*40+y*.15;
+    if(cost<bc){bc=cost;best={x,y};}}return best;}
+
+/* ---------- MLP (bubble_model.py MLP 포팅: He init, relu/sigmoid, Adam, full-batch) ---------- */
+const relu=z=>z>0?z:0; const sigmoid=z=>z<-60?0:z>60?1:1/(1+Math.exp(-z));
+class MLP{
+  constructor(sizes=SIZES,seed=0){const rng=mulberry32(seed||1);const gauss=gaussFactory(rng);
+    this.sizes=sizes.slice();this.W=[];this.b=[];
+    for(let i=0;i<sizes.length-1;i++){const nin=sizes[i],nout=sizes[i+1];const sc=Math.sqrt(2/nin);
+      this.W.push(Array.from({length:nout},()=>Array.from({length:nin},()=>gauss(0,sc))));
+      this.b.push(new Array(nout).fill(0));}
+    this._initAdam();}
+  _initAdam(){this.mW=this.W.map(l=>l.map(r=>r.map(()=>0)));this.vW=this.W.map(l=>l.map(r=>r.map(()=>0)));
+    this.mb=this.b.map(l=>l.map(()=>0));this.vb=this.b.map(l=>l.map(()=>0));this.t=0;}
+  forward(x){const acts=[x],zs=[];let a=x;
+    for(let li=0;li<this.W.length;li++){const W=this.W[li],b=this.b[li];const z=new Array(b.length);
+      for(let o=0;o<b.length;o++){let s=b[o];const Wo=W[o];for(let i=0;i<a.length;i++)s+=Wo[i]*a[i];z[o]=s;}
+      zs.push(z);const last=li===this.W.length-1;a=z.map(v=>last?sigmoid(v):relu(v));acts.push(a);}
+    return{acts,zs};}
+  predict(x){return this.forward(x).acts.at(-1);}
+  _grads(x,y){const{acts,zs}=this.forward(x);const L=this.W.length;
+    const gW=this.W.map(l=>l.map(r=>r.map(()=>0)));const gb=this.b.map(l=>l.map(()=>0));
+    const out=acts[L];const no=out.length;
+    let delta=out.map((o,i)=>2*(o-y[i])/no*o*(1-o));
+    for(let li=L-1;li>=0;li--){const aPrev=acts[li];
+      for(let o=0;o<this.b[li].length;o++){gb[li][o]=delta[o];const row=gW[li][o],d=delta[o];for(let i=0;i<aPrev.length;i++)row[i]=d*aPrev[i];}
+      if(li>0){const zPrev=zs[li-1];const nd=new Array(aPrev.length).fill(0);
+        for(let i=0;i<aPrev.length;i++){let s=0;for(let o=0;o<delta.length;o++)s+=this.W[li][o][i]*delta[o];nd[i]=s*(zPrev[i]>0?1:0);}
+        delta=nd;}}
+    return{gW,gb};}
+  fit(X,Y,{epochs=200,lr=0.02,onEpoch=null}={}){const b1=0.9,b2=0.999,eps=1e-8,n=X.length;if(!n)return;
+    for(let ep=0;ep<epochs;ep++){
+      const aW=this.W.map(l=>l.map(r=>r.map(()=>0)));const ab=this.b.map(l=>l.map(()=>0));
+      for(let s=0;s<n;s++){const{gW,gb}=this._grads(X[s],Y[s]);
+        for(let li=0;li<this.W.length;li++)for(let o=0;o<this.b[li].length;o++){ab[li][o]+=gb[li][o];const ar=aW[li][o],gr=gW[li][o];for(let i=0;i<gr.length;i++)ar[i]+=gr[i];}}
+      this.t++;
+      for(let li=0;li<this.W.length;li++)for(let o=0;o<this.b[li].length;o++){
+        let g=ab[li][o]/n;this.mb[li][o]=b1*this.mb[li][o]+(1-b1)*g;this.vb[li][o]=b2*this.vb[li][o]+(1-b2)*g*g;
+        let mh=this.mb[li][o]/(1-b1**this.t),vh=this.vb[li][o]/(1-b2**this.t);this.b[li][o]-=lr*mh/(Math.sqrt(vh)+eps);
+        const Wr=this.W[li][o],mr=this.mW[li][o],vr=this.vW[li][o],ar=aW[li][o];
+        for(let i=0;i<Wr.length;i++){g=ar[i]/n;mr[i]=b1*mr[i]+(1-b1)*g;vr[i]=b2*vr[i]+(1-b2)*g*g;mh=mr[i]/(1-b1**this.t);vh=vr[i]/(1-b2**this.t);Wr[i]-=lr*mh/(Math.sqrt(vh)+eps);}}
+      if(onEpoch)onEpoch(ep+1,epochs);}}
+  toDict(){return{sizes:this.sizes,W:this.W,b:this.b};}
+  static fromDict(d){const m=new MLP(d.sizes,1);m.W=d.W;m.b=d.b;m._initAdam();return m;}
+}
+function mseOf(model,X,Y){if(!X.length)return 0;let tot=0;for(let s=0;s<X.length;s++){const p=model.predict(X[s]);tot+=((p[0]-Y[s][0])**2+(p[1]-Y[s][1])**2)/2;}return tot/X.length;}
+
+/* ---------- 합성 패널 생성기 ---------- */
+const ASPECTS=[[3,4],[4,5],[1,1],[5,4],[3,5]];
+function pick(rng,arr){return arr[Math.floor(rng()*arr.length)];}
+const SNIP={speech:["진심이야?","그래서 어쩌라고","나도 몰라…","좋은 생각인데?","그건 좀 아니지","들어봐, 이건","왜 또 그래","해보자 그럼","말도 안 돼","알겠어"],
+  thought:["…괜찮을까","설마","아 망했다","어떻게 하지","나쁘지 않네"],
+  narration:["그날 밤,","며칠 뒤—","사무실은 조용했다","아무도 몰랐다"],
+  screen:["BUILD OK","404","$ deploy","ERROR"],
+  sfx:["쾅!","두근","스윽","탁","우웅"]};
+function genPanel(rng,idx){
+  const gauss=gaussFactory(rng);
+  const [aw,ah]=pick(rng,ASPECTS);const imageW=aw*256,imageH=ah*256;
+  // 인물 수: 1~4 (1~2 가중)
+  const r=rng();const N=r<0.4?1:r<0.75?2:r<0.92?3:4;
+  const usedNames=[];const chars=[];
+  for(let k=0;k<N;k++){
+    let nm;do{nm=pick(rng,NAMES);}while(usedNames.includes(nm));usedNames.push(nm);
+    const fw=clamp(0.20-N*0.02+ (rng()-0.5)*0.05, 0.07,0.22);const fh=fw*1.22;
+    const col=(k+0.5)/N; const fx=clamp(col+(rng()-0.5)*(0.6/N),fw/2+0.02,1-fw/2-0.02);
+    const fy=clamp(0.16+rng()*0.30+(N>2?0.04*(k%2):0),fh/2+0.02,0.6);
+    const th=clamp(0.30+rng()*0.16,0.2,0.5);const tw=clamp(fw*(1.7+rng()*0.7),fw,0.5);
+    const ty=clamp(fy+fh/2+th/2-0.04,0,1-0.01);
+    chars.push({name:nm,role:k===0?"main":"side",hue:Math.floor(rng()*360),
+      face:{x:fx,y:fy,w:fw,h:fh},torso:{x:clamp(fx+(rng()-0.5)*0.03,tw/2,1-tw/2),y:ty,w:tw,h:th}});
+  }
+  // 말풍선 1~3
+  const M=1+Math.floor(rng()*Math.min(3,N+1));
+  const bubbles=[];
+  for(let k=0;k<M;k++){
+    const sp=chars[Math.floor(rng()*chars.length)];
+    const tr=rng();const type=tr<0.68?"speech":tr<0.8?"thought":tr<0.9?"narration":tr<0.95?"screen":"sfx";
+    const text=pick(rng,SNIP[type]);
+    const bw=clamp(0.13+text.length*0.018+(rng()-0.5)*0.04,0.10,0.34);
+    const bh=clamp(0.055+(type==="narration"?0.02:0)+(rng())*0.04,0.05,0.14);
+    bubbles.push({id:`${idx+1}-${k}`,speaker:sp.name,type,text,w:bw,h:bh,place:null});
+  }
+  return {panelId:String(idx+1),imageW,imageH,characters:chars,bubbles};
+}
+function buildPanels(){const rng=mulberry32(SEED);const ps=[];for(let i=0;i<N_PANELS;i++)ps.push(genPanel(rng,i));return ps;}
+
+/* ---------- 상태 ---------- */
+const S={panels:[],idx:0,bubbles:[],model:null,dataset:[],saved:{},doneSet:new Set()};
+
+/* ---------- 영속 ---------- */
+function save(){try{localStorage.setItem(LS_KEY,JSON.stringify({idx:S.idx,dataset:S.dataset,saved:S.saved,done:[...S.doneSet],model:S.model?S.model.toDict():null}));}catch(e){log("⚠ 저장 실패: "+e.message);}}
+function restore(){try{const r=localStorage.getItem(LS_KEY);if(!r)return false;const o=JSON.parse(r);
+  S.idx=o.idx||0;S.dataset=o.dataset||[];S.saved=o.saved||{};S.doneSet=new Set(o.done||[]);
+  if(o.model)S.model=MLP.fromDict(o.model);return true;}catch(e){return false;}}
+
+/* ---------- 렌더 ---------- */
+function px(){return{w:stage.clientWidth,h:stage.clientHeight};}
+function sizeStage(){const p=S.panels[S.idx];const maxW=Math.min(560,window.innerWidth-420),maxH=window.innerHeight-110;
+  const ar=p.imageW/p.imageH;let w=maxW,h=w/ar;if(h>maxH){h=maxH;w=h*ar;}stage.style.width=w+"px";stage.style.height=h+"px";}
+function render(){const{w,h}=px();stage.querySelectorAll(".torso,.head,.nm,.fbox,.bubble,.ghost").forEach(e=>e.remove());
+  let svg=stage.querySelector("svg.tails");if(!svg){svg=document.createElementNS("http://www.w3.org/2000/svg","svg");svg.setAttribute("class","tails");stage.appendChild(svg);}svg.innerHTML="";
+  const p=S.panels[S.idx];if(!p)return;
+  for(const c of p.characters){
+    const t=c.torso,f=c.face;
+    const td=document.createElement("div");td.className="torso";
+    td.style.left=(t.x*w-t.w*w/2)+"px";td.style.top=(t.y*h-t.h*h/2)+"px";td.style.width=(t.w*w)+"px";td.style.height=(t.h*h)+"px";
+    td.style.background=`hsl(${c.hue} 45% ${c.role==='main'?42:34}%)`;stage.appendChild(td);
+    const hd=document.createElement("div");hd.className="head";
+    hd.style.left=(f.x*w-f.w*w/2)+"px";hd.style.top=(f.y*h-f.h*h/2)+"px";hd.style.width=(f.w*w)+"px";hd.style.height=(f.h*h)+"px";
+    hd.style.background=`hsl(${c.hue} 38% 70%)`;hd.style.flexDirection="column";
+    hd.innerHTML=`<div class="eyes"><i></i><i></i></div>`;stage.appendChild(hd);
+    const fb=document.createElement("div");fb.className="fbox";fb.style.left=hd.style.left;fb.style.top=hd.style.top;fb.style.width=hd.style.width;fb.style.height=hd.style.height;stage.appendChild(fb);
+    const nm=document.createElement("div");nm.className="nm";nm.textContent=c.name;nm.style.left=(f.x*w)+"px";nm.style.top=(f.y*h-f.h*h/2-15)+"px";nm.style.background=`hsl(${c.hue} 45% 30%)`;nm.style.color="#fff";stage.appendChild(nm);
+  }
+  for(const b of S.bubbles){if(!b.place)continue;
+    if(b._ghost){const g=document.createElement("div");g.className="ghost";g.style.width=(b.w*w)+"px";g.style.height=(b.h*h)+"px";
+      g.style.left=(b._ghost.x*w-b.w*w/2)+"px";g.style.top=(b._ghost.y*h-b.h*h/2)+"px";g.textContent="모델";stage.appendChild(g);}
+    const el=document.createElement("div");el.className="bubble "+(b.type||"speech");
+    el.innerHTML=`<span class="sp">${b.speaker}</span>${b.text||b.id}`;
+    el.style.width=(b.w*w)+"px";el.style.height=(b.h*h)+"px";posBubble(el,b);dragBubble(el,b);stage.appendChild(el);}
+  drawTails();}
+function posBubble(el,b){const{w,h}=px();el.style.left=(b.place.x*w-b.w*w/2)+"px";el.style.top=(b.place.y*h-b.h*h/2)+"px";}
+function drawTails(){const svg=stage.querySelector("svg.tails");if(!svg)return;const{w,h}=px();svg.innerHTML="";const p=S.panels[S.idx];
+  for(const b of S.bubbles){if(!b.place)continue;const sp=speakerChar(p,b);if(!sp||!sp.face)continue;
+    if(b.type==="narration")continue;
+    const ln=document.createElementNS("http://www.w3.org/2000/svg","line");
+    ln.setAttribute("x1",b.place.x*w);ln.setAttribute("y1",b.place.y*h);ln.setAttribute("x2",sp.face.x*w);ln.setAttribute("y2",(sp.face.y-sp.face.h/2)*h);
+    ln.setAttribute("stroke","#fff");ln.setAttribute("stroke-width","1.5");ln.setAttribute("opacity",".45");svg.appendChild(ln);}}
+function dragBubble(el,b){el.addEventListener("pointerdown",e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add("dragging");
+  const{w,h}=px();const r=stage.getBoundingClientRect();
+  const mv=ev=>{b.place={x:clamp((ev.clientX-r.left)/w,b.w/2,1-b.w/2),y:clamp((ev.clientY-r.top)/h,b.h/2,1-b.h/2)};b._edited=true;posBubble(el,b);drawTails();};
+  const up=()=>{el.classList.remove("dragging");el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);};
+  el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);});}
+
+/* ---------- 패널 로드 / 배치 ---------- */
+function placeBubbles(){const p=S.panels[S.idx];const useModel=$("chkGhost").checked&&S.model&&humanCount()>=8;let src="heuristic";
+  for(const b of S.bubbles){const sv=S.saved[p.panelId]&&S.saved[p.panelId][b.id];
+    const heur=heuristicPlace(p,b);
+    let modelP=null;if(S.model){const pr=S.model.predict(extractFeatures(p,b));modelP={x:clamp(pr[0],b.w/2,1-b.w/2),y:clamp(pr[1],b.h/2,1-b.h/2)};}
+    b._ghost=($("chkGhost").checked&&modelP)?modelP:null;
+    if(sv){b.place={...sv};src="saved";}
+    else if(useModel&&modelP){b.place={...modelP};src="model";}
+    else{b.place={...heur};}
+    b._edited=false;}
+  const pill=$("srcPill");pill.textContent=src;pill.className="pill "+(src==="saved"?"saved":src==="model"?"model":"heur");}
+function loadPanel(){const p=S.panels[S.idx];S.bubbles=p.bubbles.map(b=>({...b}));sizeStage();placeBubbles();render();
+  $("pIdx").textContent=`${S.idx+1} / ${S.panels.length}`;
+  log(`패널 ${p.panelId} 로드 · 인물 ${p.characters.length} · 말풍선 ${S.bubbles.length}`);}
+
+/* ---------- 학습 ---------- */
+function humanCount(){return S.dataset.filter(d=>d.source==="human").length;}
+function buildXY(){const X=[],Y=[];for(const d of S.dataset){const reps=d.source==="human"?W_HUMAN:1;for(let r=0;r<reps;r++){X.push(d.features);Y.push([d.label.x,d.label.y]);}}return{X,Y};}
+function refreshStats(){$("nSamples").textContent=S.dataset.length;$("pDone").textContent=S.doneSet.size;}
+function train(epochs){const{X,Y}=buildXY();if(X.length<2){log("⚠ 샘플 2개 미만 — 더 교정 필요");return;}
+  if(!S.model)S.model=new MLP(SIZES,7);
+  $("trState").textContent="학습중…";
+  // 비동기 청크로 UI 안 막히게
+  const total=epochs;let done=0;const chunk=20;
+  const step=()=>{const e=Math.min(chunk,total-done);S.model.fit(X,Y,{epochs:e,lr:0.02});done+=e;
+    $("trBar").style.width=Math.round(done/total*100)+"%";
+    if(done<total){requestAnimationFrame(step);}
+    else{const m=mseOf(S.model,X,Y);$("trMse").textContent=m.toFixed(5);$("trState").textContent="완료";
+      log(`학습 완료 · 샘플 ${S.dataset.length}(사람 ${humanCount()}) · MSE ${m.toFixed(5)}`);save();}};
+  requestAnimationFrame(step);}
+
+/* ---------- 액션 ---------- */
+function commitPanel(){const p=S.panels[S.idx];if(!S.saved[p.panelId])S.saved[p.panelId]={};let n=0;
+  for(const b of S.bubbles){if(!b.place)continue;S.saved[p.panelId][b.id]={x:+b.place.x.toFixed(4),y:+b.place.y.toFixed(4)};
+    // dataset: 같은 (panel,bubble) 사람 라벨은 최신으로 교체
+    const key=s=>s.panelId===p.panelId&&s.bubbleId===b.id&&s.source==="human";
+    const idx=S.dataset.findIndex(key);const rec={panelId:p.panelId,bubbleId:b.id,features:extractFeatures(p,b),label:{x:+b.place.x.toFixed(4),y:+b.place.y.toFixed(4)},source:"human",ts:Date.now()};
+    if(idx>=0)S.dataset[idx]=rec;else S.dataset.push(rec);n++;}
+  S.doneSet.add(p.panelId);refreshStats();log(`패널 ${p.panelId} 교정 저장 (${n}개 말풍선)`);}
+function next(){if(S.idx<S.panels.length-1){S.idx++;loadPanel();save();}else log("마지막 패널입니다 🎉");}
+function prev(){if(S.idx>0){S.idx--;loadPanel();save();}}
+function saveNext(){commitPanel();if($("chkAuto").checked)train(humanCount()>40?260:180);else save();next();}
+function warmup(){let n=0;for(const p of S.panels){for(const b of p.bubbles){const pl=heuristicPlace(p,b);
+  const exists=S.dataset.some(s=>s.panelId===p.panelId&&s.bubbleId===b.id);
+  if(!exists){S.dataset.push({panelId:p.panelId,bubbleId:b.id,features:extractFeatures(p,b),label:{x:+pl.x.toFixed(4),y:+pl.y.toFixed(4)},source:"auto",ts:Date.now()});n++;}}}
+  refreshStats();log(`휴리스틱 워밍업: auto 샘플 ${n}개 추가 → 학습`);train(300);}
+
+/* ---------- export ---------- */
+function download(name,obj){const blob=new Blob([JSON.stringify(obj,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();log("내보냄: "+name);}
+
+/* ---------- init ---------- */
+function init(){
+  S.panels=buildPanels();
+  const had=restore();
+  if(S.idx>=S.panels.length)S.idx=0;
+  refreshStats();
+  if(S.model){const{X,Y}=buildXY();if(X.length)$("trMse").textContent=mseOf(S.model,X,Y).toFixed(5);$("trState").textContent="복원됨";}
+  loadPanel();
+  log(had?`이어서 진행 (교정 ${S.doneSet.size}장, 샘플 ${S.dataset.length})`:`새 세션 · 합성 패널 ${S.panels.length}장 생성 (seed ${SEED})`);
+  $("btnSaveNext").onclick=saveNext;
+  $("btnSkip").onclick=()=>{log(`패널 ${S.panels[S.idx].panelId} 건너뜀`);next();};
+  $("btnPrev").onclick=prev;
+  $("btnTrain").onclick=()=>train(500);
+  $("btnWarm").onclick=warmup;
+  $("btnExpData").onclick=()=>download("dataset.json",S.dataset);
+  $("btnExpModel").onclick=()=>{if(!S.model)return log("⚠ 아직 모델 없음 — 먼저 학습");download("model.json",S.model.toDict());};
+  $("btnReset").onclick=()=>{if(confirm("모든 교정·모델 초기화?")){localStorage.removeItem(LS_KEY);S.dataset=[];S.saved={};S.doneSet=new Set();S.model=null;S.idx=0;refreshStats();$("trMse").textContent="–";$("trState").textContent="대기";loadPanel();log("초기화 완료");}};
+  $("chkGhost").onchange=()=>{placeBubbles();render();};
+  window.addEventListener("resize",()=>{sizeStage();render();});
+  window.addEventListener("keydown",e=>{if(e.target.tagName==="INPUT")return;
+    if(e.key==="ArrowRight"){e.preventDefault();next();}
+    else if(e.key==="ArrowLeft"){e.preventDefault();prev();}
+    else if(e.key==="s"||e.key==="S"){e.preventDefault();saveNext();}
+    else if(e.key==="x"||e.key==="X"){e.preventDefault();$("btnSkip").click();}});
+}
+// 검증용 노출 (playwright/headless)
+window.BT={S,MLP,extractFeatures,heuristicPlace,genPanel,buildPanels,mulberry32,FEATLEN,SIZES,
+  saveNext,next,prev,warmup,train,humanCount,
+  get nSaved(){return S.doneSet.size;},get nSamples(){return S.dataset.length;}};
+init();
+</script>
+</body>
+</html>
