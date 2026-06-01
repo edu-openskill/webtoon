@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>말풍선 라벨러 · Bubble Placement Labeler</title>
+<!-- 의존성 0 · CDN 없음 · 오프라인 동작. 학습/예측은 bubble_model.py (CLI)가 담당. -->
+<style>
+  :root{--bg:#0e0e16;--panel:#15151f;--border:#2a2a3a;--text:#e8e8f0;--muted:#9a9ab0;
+    --dim:#6a6a80;--indigo:#818cf8;--emerald:#34d399;--amber:#fbbf24;--rose:#fb7185;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px}
+  header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:14px}
+  header h1{font-size:16px;margin:0}
+  header .sub{color:var(--muted);font-size:12px}
+  .layout{display:flex;height:calc(100vh - 52px)}
+  .stage-wrap{flex:1;overflow:auto;padding:24px;display:flex;align-items:flex-start;justify-content:center}
+  .side{width:330px;border-left:1px solid var(--border);padding:16px;overflow-y:auto;background:var(--panel)}
+  .stage{position:relative;background:#000;border:1px solid var(--border);box-shadow:0 8px 40px rgba(0,0,0,0.5);user-select:none}
+  .stage img{display:block;width:100%;height:100%;pointer-events:none}
+  .stage.empty{display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px}
+  .box{position:absolute;border:1.5px solid;border-radius:4px;cursor:move;font-size:10px}
+  .box .lbl{position:absolute;top:-16px;left:0;white-space:nowrap;font-size:10px;padding:0 3px;border-radius:3px}
+  .box.face{border-color:var(--emerald);background:rgba(52,211,153,0.10)}
+  .box.face .lbl{background:var(--emerald);color:#06281d}
+  .box.torso{border-color:var(--indigo);border-style:dashed;background:rgba(129,140,248,0.06)}
+  .box.other{opacity:0.55}
+  .box .handle{position:absolute;right:-5px;bottom:-5px;width:11px;height:11px;background:#fff;border-radius:2px;cursor:nwse-resize}
+  .bubble{position:absolute;background:#fff;color:#111;border-radius:14px;padding:6px 10px;font-size:11px;font-weight:600;
+    cursor:grab;display:flex;align-items:center;justify-content:center;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);border:1.5px solid #111}
+  .bubble.dragging{cursor:grabbing;outline:2px solid var(--amber)}
+  .bubble.thought{border-style:dashed;background:#eef;color:#334}
+  .bubble.narration{background:#14141f;color:#e8e8f0;font-style:italic;border-color:#444}
+  .bubble.screen{background:#0a0a0a;color:var(--emerald);font-family:monospace;border-color:var(--emerald)}
+  .bubble.sfx{background:transparent;color:var(--amber);border:none;box-shadow:none;font-style:italic;font-size:16px}
+  .bubble .sp{position:absolute;top:-15px;left:0;font-size:9px;color:var(--rose);font-weight:700;white-space:nowrap}
+  .bubble.model{box-shadow:0 0 0 2px var(--amber),0 2px 8px rgba(0,0,0,0.4)}
+  svg.tails{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .grp{margin-bottom:16px}
+  .grp h3{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin:0 0 8px}
+  button{background:#23233340;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-size:12px;cursor:pointer;margin:0 4px 6px 0}
+  button:hover{background:#2e2e44}
+  button.primary{background:var(--indigo);color:#0a0e2a;border-color:var(--indigo);font-weight:700}
+  button.go{background:var(--emerald);color:#06281d;border-color:var(--emerald);font-weight:700}
+  select{background:#0d0d16;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;width:100%}
+  label.fld{display:block;font-size:11px;color:var(--muted);margin:8px 0 3px}
+  .stat{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted var(--border);font-size:12px}
+  .stat b{color:var(--emerald)}
+  .log{font-family:monospace;font-size:11px;color:var(--muted);background:#0a0a12;border:1px solid var(--border);border-radius:6px;padding:8px;height:110px;overflow-y:auto;white-space:pre-wrap}
+  .hint{font-size:11px;color:var(--dim);line-height:1.5;margin-top:6px}
+  .drop{border:2px dashed var(--border);border-radius:8px;padding:12px;text-align:center;color:var(--dim);font-size:12px;cursor:pointer}
+  .drop.over{border-color:var(--indigo);background:rgba(129,140,248,0.1)}
+  code{background:#0a0a12;padding:1px 4px;border-radius:3px;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>말풍선 라벨러</h1>
+  <span class="sub">얼굴 근처 배치 → 드래그로 베스트 위치 교정 → dataset.json 내보내 <code>bubble_model.py</code>로 학습</span>
+</header>
+<div class="layout">
+  <div class="stage-wrap">
+    <div id="stage" class="stage empty" style="width:600px;height:400px">패널 선택 또는 이미지 드롭</div>
+  </div>
+  <div class="side">
+    <div class="grp">
+      <h3>1 · 패널 / 이미지</h3>
+      <select id="panelSel"></select>
+      <div style="margin-top:8px">
+        <button id="smp1">샘플 1.png</button>
+        <button id="smp2">샘플 22.jpg</button>
+      </div>
+      <div id="drop" class="drop" style="margin-top:8px">클릭/드롭으로 이미지 로드</div>
+      <input type="file" id="fileIn" accept="image/*" style="display:none">
+      <p class="hint">초록=얼굴, 보라=몸통. 박스를 드래그해 실제 그림에 맞게 보정(모서리=리사이즈).</p>
+    </div>
+    <div class="grp">
+      <h3>2 · 배치 & 교정</h3>
+      <button id="btnHeur">휴리스틱 배치</button>
+      <button id="btnImpPred">예측 불러오기</button>
+      <button id="btnSave" class="go">교정 위치 저장</button>
+      <input type="file" id="predIn" accept="application/json" style="display:none">
+      <p class="hint">말풍선을 드래그해 베스트 위치로 옮긴 뒤 저장. <code>predictions.json</code>(CLI 예측)을 불러와 교정도 가능.</p>
+    </div>
+    <div class="grp">
+      <h3>3 · 데이터셋</h3>
+      <button id="btnExp" class="primary">dataset.json 내보내기</button>
+      <button id="btnImp">가져오기</button>
+      <button id="btnClear">초기화</button>
+      <input type="file" id="dataIn" accept="application/json" style="display:none">
+      <div class="stat"><span>수집된 샘플</span><b id="nSamples">0</b></div>
+      <p class="hint">CLI: <code>python3 bubble_model.py train --data dataset.json --out model.json</code></p>
+    </div>
+    <div class="grp"><h3>로그</h3><div id="log" class="log"></div></div>
+  </div>
+</div>
+<script>
+"use strict";
+// ===== 인코딩: bubble_model.py 의 extract_features 와 1:1 일치 (32차원) =====
+const GRID=4, TYPES=["speech","thought","narration","screen","sfx"];
+const FEATLEN=4+4+2+5+1+GRID*GRID; // 32
+const DS_KEY="bubble-labeler-dataset";
+const SAMPLE_IMG={ "smp1":"../episode-01/1.png", "smp2":"../episode-01/22.jpg" };
+
+const S={panels:[],panel:null,bubbles:[],img:null,dataset:[]};
+const $=id=>document.getElementById(id);
+const stage=$("stage");
+function log(m){const e=$("log");e.textContent+=m+"\n";e.scrollTop=e.scrollHeight;}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const boxRect=b=>[b.x-b.w/2,b.y-b.h/2,b.x+b.w/2,b.y+b.h/2];
+function cellRect(i){const r=Math.floor(i/GRID),c=i%GRID,s=1/GRID;return[c*s,r*s,c*s+s,r*s+s];}
+function inter(a,b){const w=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0]));const h=Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));return w*h;}
+function speakerChar(p,b){return p.characters.find(c=>c.name===b.speaker)||p.characters[0];}
+function occGrid(p,b){const g=new Array(16).fill(0);const others=p.characters.filter(c=>c.name!==b.speaker);const ca=(1/GRID)**2;
+  for(let i=0;i<16;i++){const cr=cellRect(i);let cov=0;for(const c of others){if(c.face)cov+=inter(cr,boxRect(c.face));if(c.torso)cov+=inter(cr,boxRect(c.torso));}g[i]=clamp(cov/ca,0,1);}return g;}
+function extractFeatures(p,b){const sp=speakerChar(p,b);const f=sp.face||{x:.5,y:.5,w:0,h:0};const t=sp.torso||{x:0,y:0,w:0,h:0};
+  const ty=new Array(5).fill(0);const ti=TYPES.indexOf(b.type);ty[ti>=0?ti:0]=1;
+  const ar=(p.imageW||1)/(p.imageH||1);const v=[f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h,b.w,b.h,...ty,ar/(ar+1),...occGrid(p,b)];
+  return v;}
+
+// ===== 휴리스틱 (유일 근거: 얼굴 근처 + 빈 칸) =====
+function heuristicPlace(p,b){const sp=speakerChar(p,b);const f=sp.face||{x:.5,y:.5,w:.1,h:.1};const occ=occGrid(p,b);
+  let best=null,bc=1e9;for(const deg of[-90,-60,-120,-30,-150,0,180]){const r=deg*Math.PI/180;
+    const x=clamp(f.x+Math.cos(r)*(f.w/2+b.w/2+.02),b.w/2,1-b.w/2),y=clamp(f.y+Math.sin(r)*(f.h/2+b.h/2+.02),b.h/2,1-b.h/2);
+    const ci=clamp(Math.floor(y*GRID),0,3)*GRID+clamp(Math.floor(x*GRID),0,3);
+    const fo=inter([x-b.w/2,y-b.h/2,x+b.w/2,y+b.h/2],boxRect(f));const cost=occ[ci]+fo*40+y*.15;
+    if(cost<bc){bc=cost;best={x,y};}}return best;}
+
+// ===== 렌더 =====
+function px(){return{w:stage.clientWidth,h:stage.clientHeight};}
+function render(){const{w,h}=px();stage.querySelectorAll(".box,.bubble").forEach(e=>e.remove());
+  let svg=stage.querySelector("svg.tails");if(!svg){svg=document.createElementNS("http://www.w3.org/2000/svg","svg");svg.setAttribute("class","tails");stage.appendChild(svg);}svg.innerHTML="";
+  if(!S.panel)return;
+  for(const c of S.panel.characters){if(c.face)addBox(c,"face",c.name);if(c.torso)addBox(c,"torso","");}
+  for(const b of S.bubbles){if(!b.place)continue;const el=document.createElement("div");
+    el.className="bubble "+(b.type||"speech")+(b._model?" model":"");el.innerHTML=`<span class="sp">${b.speaker||""}</span>${b.id}`;
+    el.style.width=(b.w*w)+"px";el.style.height=(b.h*h)+"px";posBubble(el,b);dragBubble(el,b);stage.appendChild(el);}
+  drawTails();}
+function posBubble(el,b){const{w,h}=px();el.style.left=(b.place.x*w-b.w*w/2)+"px";el.style.top=(b.place.y*h-b.h*h/2)+"px";}
+function addBox(c,kind,label){const{w,h}=px();const bx=c[kind];const el=document.createElement("div");
+  el.className="box "+kind+(c.role==="other"?" other":"");el.style.left=(bx.x*w-bx.w*w/2)+"px";el.style.top=(bx.y*h-bx.h*h/2)+"px";
+  el.style.width=(bx.w*w)+"px";el.style.height=(bx.h*h)+"px";if(label)el.innerHTML=`<span class="lbl">${label}</span>`;
+  const hd=document.createElement("div");hd.className="handle";el.appendChild(hd);editBox(el,bx,hd);stage.appendChild(el);}
+function drawTails(){const svg=stage.querySelector("svg.tails");if(!svg)return;const{w,h}=px();svg.innerHTML="";
+  for(const b of S.bubbles){if(!b.place)continue;const sp=speakerChar(S.panel,b);if(!sp||!sp.face)continue;
+    const ln=document.createElementNS("http://www.w3.org/2000/svg","line");ln.setAttribute("x1",b.place.x*w);ln.setAttribute("y1",b.place.y*h);
+    ln.setAttribute("x2",sp.face.x*w);ln.setAttribute("y2",sp.face.y*h);ln.setAttribute("stroke","#fff");ln.setAttribute("stroke-width","1.5");ln.setAttribute("opacity",".5");svg.appendChild(ln);}}
+
+// ===== 드래그 =====
+function dragBubble(el,b){el.addEventListener("pointerdown",e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add("dragging");
+  const{w,h}=px();const r=stage.getBoundingClientRect();
+  const mv=ev=>{b.place={x:clamp((ev.clientX-r.left)/w,b.w/2,1-b.w/2),y:clamp((ev.clientY-r.top)/h,b.h/2,1-b.h/2)};b._model=false;posBubble(el,b);el.classList.remove("model");drawTails();};
+  const up=()=>{el.classList.remove("dragging");el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);};
+  el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);});}
+function editBox(el,bx,hd){el.addEventListener("pointerdown",e=>{if(e.target===hd)return;e.preventDefault();el.setPointerCapture(e.pointerId);
+  const{w,h}=px();const r=stage.getBoundingClientRect();
+  const mv=ev=>{bx.x=clamp((ev.clientX-r.left)/w,bx.w/2,1-bx.w/2);bx.y=clamp((ev.clientY-r.top)/h,bx.h/2,1-bx.h/2);
+    el.style.left=(bx.x*w-bx.w*w/2)+"px";el.style.top=(bx.y*h-bx.h*h/2)+"px";drawTails();};
+  const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);};el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);});
+  hd.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();hd.setPointerCapture(e.pointerId);
+  const{w,h}=px();const r=stage.getBoundingClientRect();
+  const mv=ev=>{bx.w=clamp(((ev.clientX-r.left)/w-(bx.x-bx.w/2)),.03,1);bx.h=clamp(((ev.clientY-r.top)/h-(bx.y-bx.h/2)),.03,1);
+    el.style.width=(bx.w*w)+"px";el.style.height=(bx.h*h)+"px";};
+  const up=()=>{hd.removeEventListener("pointermove",mv);hd.removeEventListener("pointerup",up);};hd.addEventListener("pointermove",mv);hd.addEventListener("pointerup",up);});}
+
+// ===== 패널/이미지 =====
+function loadPanel(p){S.panel=JSON.parse(JSON.stringify(p));S.bubbles=S.panel.bubbles.map(b=>({...b,place:b.place||null,_model:false}));
+  sizeStage();render();log(`패널 ${p.panelId} · 인물 ${p.characters.length} · 말풍선 ${S.bubbles.length}`);}
+function sizeStage(){if(!S.panel)return;const maxW=Math.min(900,window.innerWidth-400),maxH=window.innerHeight-110;
+  const ar=(S.panel.imageW||1)/(S.panel.imageH||1);let w=maxW,h=w/ar;if(h>maxH){h=maxH;w=h*ar;}
+  stage.style.width=w+"px";stage.style.height=h+"px";stage.classList.remove("empty");
+  let img=stage.querySelector("img");if(S.img){if(!img){img=document.createElement("img");stage.insertBefore(img,stage.firstChild);}img.src=S.img.src;}else if(img)img.remove();}
+function loadImageFile(file){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{S.img=im;sizeStage();render();log("이미지 로드");};im.src=fr.result;};fr.readAsDataURL(file);}
+function loadImageUrl(url){const im=new Image();im.onload=()=>{S.img=im;sizeStage();render();log("이미지 로드: "+url);};im.onerror=()=>log("⚠ 이미지 없음: "+url);im.src=url;}
+
+// ===== 데이터셋 =====
+function saveDS(){try{localStorage.setItem(DS_KEY,JSON.stringify(S.dataset));}catch(e){}$("nSamples").textContent=S.dataset.length;}
+function loadDS(){try{const r=localStorage.getItem(DS_KEY);if(r)S.dataset=JSON.parse(r);}catch(e){}$("nSamples").textContent=S.dataset.length;}
+function saveSample(){if(!S.panel)return log("⚠ 패널 없음");let n=0;
+  for(const b of S.bubbles){if(!b.place)continue;S.dataset.push({panelId:S.panel.panelId,bubbleId:b.id,features:extractFeatures(S.panel,b),label:{x:+b.place.x.toFixed(4),y:+b.place.y.toFixed(4)},ts:Date.now()});n++;}
+  saveDS();log(`샘플 ${n}개 저장 (총 ${S.dataset.length})`);}
+function applyPredictions(obj){if(!S.panel)return;const arr=obj[S.panel.panelId];if(!arr)return log("⚠ 이 패널 예측 없음");
+  for(const pr of arr){const b=S.bubbles.find(x=>x.id===pr.bubbleId);if(b&&pr.model){b.place={...pr.model};b._model=true;}}render();log("예측 적용 (노랑=모델)");}
+
+// ===== init =====
+async function init(){loadDS();
+  try{const r=await fetch("panels.sample.json");const j=await r.json();S.panels=j.panels;
+    const sel=$("panelSel");S.panels.forEach((p,i)=>{const o=document.createElement("option");o.value=i;o.textContent=`${p.panelId} (${p.characters.length}인,${p.bubbles.length}말풍선)`;sel.appendChild(o);});
+    sel.onchange=()=>{S.img=null;loadPanel(S.panels[+sel.value]);};
+    if(S.panels.length)loadPanel(S.panels[0]);
+  }catch(e){log("⚠ panels.sample.json 로드 실패: "+e.message);}
+  $("btnHeur").onclick=()=>{if(!S.panel)return;for(const b of S.bubbles){b.place=heuristicPlace(S.panel,b);b._model=false;}render();log("휴리스틱 배치");};
+  $("btnSave").onclick=saveSample;
+  $("btnImpPred").onclick=()=>$("predIn").click();
+  $("predIn").onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{try{applyPredictions(JSON.parse(fr.result));}catch(err){log("⚠ 예측 파싱 실패");}};fr.readAsText(f);};
+  $("btnExp").onclick=()=>{const blob=new Blob([JSON.stringify(S.dataset,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="dataset.json";a.click();log("dataset.json 내보냄");};
+  $("btnImp").onclick=()=>$("dataIn").click();
+  $("dataIn").onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{try{const a=JSON.parse(fr.result);S.dataset=S.dataset.concat(a);saveDS();log(`${a.length}개 가져옴 (총 ${S.dataset.length})`);}catch(err){log("⚠ 실패");}};fr.readAsText(f);};
+  $("btnClear").onclick=()=>{if(confirm("초기화?")){S.dataset=[];saveDS();log("초기화");}};
+  $("smp1").onclick=()=>loadImageUrl(SAMPLE_IMG.smp1);
+  $("smp2").onclick=()=>loadImageUrl(SAMPLE_IMG.smp2);
+  const drop=$("drop"),fileIn=$("fileIn");drop.onclick=()=>fileIn.click();fileIn.onchange=e=>{if(e.target.files[0])loadImageFile(e.target.files[0]);};
+  ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+  drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)loadImageFile(f);});
+  window.addEventListener("resize",()=>{sizeStage();render();});
+}
+// 검증용 노출 (playwright)
+window.BT={S,extractFeatures,heuristicPlace,saveSample,loadPanel,FEATLEN,get nSamples(){return S.dataset.length;}};
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# 실행 산출물 (재생성 가능)
+model.json
+predictions.json
+dataset.json
+__pycache__/
+*.pyc
