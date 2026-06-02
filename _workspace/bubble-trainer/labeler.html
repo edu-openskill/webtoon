@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store">
 <title>말풍선 라벨러 v2 · 합성패널 + 즉시학습</title>
 <!-- 의존성 0 · CDN 없음 · 오프라인. 합성 패널 자동생성 + 브라우저 내 MLP 학습(bubble_model.py 포팅). -->
 <style>
@@ -280,7 +281,7 @@ function dragBubble(el,b){el.addEventListener("pointerdown",e=>{e.preventDefault
   el.addEventListener("pointermove",mv);el.addEventListener("pointerup",up);});}
 
 /* ---------- 패널 로드 / 배치 ---------- */
-function placeBubbles(){const p=S.panels[S.idx];const useModel=$("chkGhost").checked&&S.model&&humanCount()>=8;let src="heuristic";
+function placeBubbles(){const p=S.panels[S.idx];const useModel=$("chkGhost").checked&&S.model&&S.dataset.length>=20;let src="heuristic";
   for(const b of S.bubbles){const sv=S.saved[p.panelId]&&S.saved[p.panelId][b.id];
     const heur=heuristicPlace(p,b);
     let modelP=null;if(S.model){const pr=S.model.predict(extractFeatures(p,b));modelP={x:clamp(pr[0],b.w/2,1-b.w/2),y:clamp(pr[1],b.h/2,1-b.h/2)};}
@@ -329,15 +330,24 @@ function warmup(){let n=0;for(const p of S.panels){for(const b of p.bubbles){con
 /* ---------- export ---------- */
 function download(name,obj){const blob=new Blob([JSON.stringify(obj,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();log("내보냄: "+name);}
 
+/* ---------- 시드(휴리스틱 워밍업 결과) 자동 로드 ---------- */
+async function loadSeed(){try{
+    const [mr,dr]=await Promise.all([fetch("model.seed.json"),fetch("dataset.seed.json")]);
+    if(!mr.ok||!dr.ok)return false;
+    S.model=MLP.fromDict(await mr.json());S.dataset=await dr.json();return true;
+  }catch(e){return false;}}
+
 /* ---------- init ---------- */
-function init(){
+async function init(){
   S.panels=buildPanels();
   const had=restore();
   if(S.idx>=S.panels.length)S.idx=0;
+  let seeded=false;
+  if(!had)seeded=await loadSeed();
   refreshStats();
-  if(S.model){const{X,Y}=buildXY();if(X.length)$("trMse").textContent=mseOf(S.model,X,Y).toFixed(5);$("trState").textContent="복원됨";}
+  if(S.model){const{X,Y}=buildXY();if(X.length)$("trMse").textContent=mseOf(S.model,X,Y).toFixed(5);$("trState").textContent=seeded?"워밍업됨":"복원됨";}
   loadPanel();
-  log(had?`이어서 진행 (교정 ${S.doneSet.size}장, 샘플 ${S.dataset.length})`:`새 세션 · 합성 패널 ${S.panels.length}장 생성 (seed ${SEED})`);
+  log(had?`이어서 진행 (교정 ${S.doneSet.size}장, 샘플 ${S.dataset.length})`:seeded?`휴리스틱 워밍업 시드 로드됨 (모델 + auto ${S.dataset.length}샘플) · 패널 ${S.panels.length}장`:`새 세션 · 합성 패널 ${S.panels.length}장 생성 (seed ${SEED})`);
   $("btnSaveNext").onclick=saveNext;
   $("btnSkip").onclick=()=>{log(`패널 ${S.panels[S.idx].panelId} 건너뜀`);next();};
   $("btnPrev").onclick=prev;
